@@ -19,8 +19,10 @@ export async function GET() {
   if (error) {
     return json({ ok: false, message: 'La base Supabase ne répond pas correctement. Vérifiez l’adresse, la clé secrète et que le script SQL a bien été exécuté.', detail: error.message || error.code }, 500);
   }
+  const photo = process.env.ANTHROPIC_API_KEY ? 'activée' : 'désactivée (ANTHROPIC_API_KEY absente, saisie manuelle uniquement)';
   return json({
     ok: true,
     message: missing.length ? 'Base de données connectée. Attention : ORGANIZER_PASSWORD n’est pas défini.' : 'Tout fonctionne : base de données connectée et configuration complète.',
+    photo: `Lecture des étiquettes par photo : ${photo}.`,
   });
 }

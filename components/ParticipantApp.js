@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { api, usePolling, Band, Notice, Capsule, Loading, fmtDate } from './ui';
 import { SCORING, MAX_POINTS_PER_BOTTLE } from '@/lib/constants';
+import BottleForm from './BottleForm';
 
 export function ratingDone(r) {
   return r && r.note !== null && r.note !== undefined;
@@ -14,7 +15,7 @@ export function predictionDone(p) {
 }
 
 export default function ParticipantApp({ code }) {
-  const { data, error, refresh } = usePolling(() => api(`/api/t/${code}`), 5000, [code]);
+  const { data, setData, error, refresh } = usePolling(() => api(`/api/t/${code}`), 5000, [code]);
 
   if (error && !data) {
     return (
@@ -39,6 +40,7 @@ export default function ParticipantApp({ code }) {
       <div className="page stack">
         {error && <Notice kind="error">Connexion instable, nouvelle tentative automatique…</Notice>}
         {tasting.phase === 'preparation' && <Waiting name={me.name} />}
+        <MyBottles data={data} code={code} onChange={(myBottles) => setData((d) => ({ ...d, myBottles }))} />
         {tasting.phase === 'revelee' && (
           <div className="panel stack center reveal-in">
             <h2>Les bouteilles sont révélées</h2>
@@ -60,7 +62,7 @@ function Waiting({ name }) {
   return (
     <div className="panel stack center">
       <h2>Bienvenue, {name}</h2>
-      <p>La dégustation n’a pas encore commencé. Cette page s’actualise toute seule : les vins apparaîtront dès que l’organisateur lancera la soirée.</p>
+      <p>La dégustation n’a pas encore commencé. Enregistrez votre ou vos bouteilles ci-dessous. Les vins à déguster apparaîtront tout seuls dès que l’organisateur lancera la soirée.</p>
       <div className="row" style={{ justifyContent: 'center' }}>
         <span className="spinner" />
         <span className="small muted">En attente de l’organisateur</span>
@@ -71,6 +73,7 @@ function Waiting({ name }) {
 
 function WineList({ data, code }) {
   const { bottles, sheets, tasting } = data;
+  const mineIds = new Set((data.myBottles || []).map((b) => b.id));
   const done = bottles.filter((b) => ratingDone(sheets[b.id]?.rating)).length;
   return (
     <>
@@ -91,7 +94,10 @@ function WineList({ data, code }) {
                 <Capsule n={b.number} />
                 <div className="grow">
                   <div className="title">Vin n°{b.number}</div>
-                  <div className="tiny muted">{i === 0 ? '1er servi' : `${i + 1}e servi`}</div>
+                  <div className="tiny muted">
+                    {i === 0 ? '1er servi' : `${i + 1}e servi`}
+                    {mineIds.has(b.id) ? ' · votre bouteille' : ''}
+                  </div>
                   <div className="ticks">
                     <span className={`tick ${ratingDone(s.rating) ? 'done' : ''}`}>
                       {ratingDone(s.rating) ? `Fiche · ${String(s.rating.note).replace('.', ',')}/20` : 'Fiche à remplir'}
@@ -234,5 +240,97 @@ function Join({ data, code, onJoined }) {
         </div>
       </div>
     </main>
+  );
+}
+
+function MyBottles({ data, code, onChange }) {
+  const { tasting, myBottles = [], scanEnabled } = data;
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const prep = tasting.phase === 'preparation';
+
+  async function send(payload) {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api(`/api/t/${code}/bottles`, { method: 'POST', body: payload });
+      onChange(r.myBottles);
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!prep && !myBottles.length) return null;
+
+  return (
+    <div className="panel stack">
+      <h2>Mes bouteilles</h2>
+      {prep && (
+        <p className="small muted">
+          Vous seul voyez ces informations. Ni l’organisateur ni les autres participants n’y ont accès avant la révélation.
+        </p>
+      )}
+      {myBottles.map((b) =>
+        editing === b.id ? (
+          <div key={b.id} className="panel">
+            <BottleForm
+              initial={b}
+              busy={busy}
+              onCancel={() => setEditing(null)}
+              onSave={async (x) => (await send({ action: 'update', id: b.id, bottle: x })) && setEditing(null)}
+            />
+          </div>
+        ) : (
+          <div key={b.id} className="row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+            <Capsule n={b.number} size="sm" />
+            <div className="grow">
+              <div style={{ fontWeight: 700 }}>{[b.producer, b.wine_name].filter(Boolean).join(', ')}</div>
+              <div className="small muted">{[b.color, b.appellation, b.vintage].filter(Boolean).join(', ') || 'Détails à compléter'}</div>
+              {b.number ? (
+                tasting.phase === 'preparation' && (
+                  <div className="small" style={{ color: 'var(--or-fonce)', fontWeight: 600 }}>
+                    Masquez la bouteille et écrivez dessus : n°{b.number}
+                  </div>
+                )
+              ) : (
+                <div className="tiny muted">Numéro attribué au tirage au sort</div>
+              )}
+            </div>
+            {prep && (
+              <div className="actions">
+                <button className="btn ghost sm" onClick={() => setEditing(b.id)}>
+                  Modifier
+                </button>
+                <button className="btn ghost sm" disabled={busy} onClick={() => confirm('Retirer cette bouteille ?') && send({ action: 'delete', id: b.id })}>
+                  Retirer
+                </button>
+              </div>
+            )}
+          </div>
+        )
+      )}
+      <Notice kind="error">{error}</Notice>
+      {prep &&
+        (adding ? (
+          <div className="panel">
+            <BottleForm
+              busy={busy}
+              scanUrl={scanEnabled ? `/api/t/${code}/scan` : null}
+              onCancel={() => setAdding(false)}
+              onSave={async (x) => (await send({ action: 'add', bottle: x })) && setAdding(false)}
+            />
+          </div>
+        ) : (
+          <button className="btn block" onClick={() => setAdding(true)}>
+            {myBottles.length ? 'Ajouter une autre bouteille' : 'Ajouter ma bouteille'}
+          </button>
+        ))}
+    </div>
   );
 }

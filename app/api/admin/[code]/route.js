@@ -1,19 +1,27 @@
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body, cleanText } from '@/lib/http';
 import { requireAdmin } from '@/lib/auth';
-import { COLORS, REGIONS, PRICE_RANGES, SERVE_ORDER_BY_COLOR } from '@/lib/constants';
+import { SERVE_ORDER_BY_COLOR } from '@/lib/constants';
+import { bottleFields, SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
 
 export const dynamic = 'force-dynamic';
 
-const BOTTLE_COLS = 'id, owner_id, number, serve_order, wine_name, producer, color, grapes, region, appellation, vintage, price_range, notes';
-
+// L'organisateur ne connaît PAS les bouteilles : avant la révélation, il ne reçoit
+// que leur identifiant, leur numéro anonyme et leur ordre de service.
+// Ni le contenu, ni le propriétaire d'une bouteille ne lui sont envoyés.
 async function loadState(tasting) {
+  const revealed = tasting.phase === 'revelee';
   const [participants, bottles, ratings, predictions] = await Promise.all([
     db().from('participants').select('id, name, hors_concours, token_hash, joined_at').eq('tasting_id', tasting.id).order('created_at'),
-    db().from('bottles').select(BOTTLE_COLS).eq('tasting_id', tasting.id).order('created_at'),
+    db().from('bottles').select(`${PUBLIC_COLS}, owner_id${revealed ? `, ${SECRET_COLS}` : ''}`).eq('tasting_id', tasting.id),
     db().from('ratings').select('participant_id, bottle_id, note').eq('tasting_id', tasting.id),
     db().from('predictions').select('participant_id, bottle_id').eq('tasting_id', tasting.id),
   ]).then((rs) => rs.map((r) => unwrap(r)));
+
+  const count = (pid) => bottles.filter((b) => b.owner_id === pid).length;
+  const visibleBottles = bottles
+    .map((b) => (revealed ? b : { id: b.id, number: b.number, serve_order: b.serve_order }))
+    .sort((a, b) => (a.number ?? 999) - (b.number ?? 999) || a.id.localeCompare(b.id));
 
   return {
     tasting: {
@@ -24,8 +32,8 @@ async function loadState(tasting) {
       numbers_drawn: tasting.numbers_drawn,
       revealed_at: tasting.revealed_at,
     },
-    participants: participants.map(({ token_hash, ...p }) => ({ ...p, connected: !!token_hash })),
-    bottles,
+    participants: participants.map(({ token_hash, ...p }) => ({ ...p, connected: !!token_hash, bottles: count(p.id) })),
+    bottles: visibleBottles,
     progress: {
       ratings: ratings.filter((r) => r.note !== null).map((r) => [r.participant_id, r.bottle_id]),
       predictions: predictions.map((r) => [r.participant_id, r.bottle_id]),
@@ -37,25 +45,6 @@ export const GET = route(async (_req, { code }) => {
   const tasting = await requireAdmin(code);
   return json(await loadState(tasting));
 });
-
-function bottleFields(b) {
-  const vintage = b.vintage === '' || b.vintage === null || b.vintage === undefined ? null : parseInt(b.vintage, 10);
-  if (vintage !== null && (Number.isNaN(vintage) || vintage < 1900 || vintage > 2100)) throw new HttpError(400, 'Millésime invalide.');
-  const f = {
-    owner_id: b.owner_id || null,
-    wine_name: cleanText(b.wine_name, 120),
-    producer: cleanText(b.producer, 120),
-    color: COLORS.includes(b.color) ? b.color : null,
-    grapes: cleanText(b.grapes, 160),
-    region: REGIONS.includes(b.region) ? b.region : null,
-    appellation: cleanText(b.appellation, 120),
-    vintage,
-    price_range: PRICE_RANGES.includes(b.price_range) ? b.price_range : null,
-    notes: cleanText(b.notes, 400),
-  };
-  if (!f.wine_name) throw new HttpError(400, 'Indiquez au moins le nom du vin.');
-  return f;
-}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -103,15 +92,11 @@ export const POST = route(async (req, { code }) => {
       break;
 
     // ----- Bouteilles -----
-    case 'addBottle':
-      unwrap(await db().from('bottles').insert({ tasting_id: T, ...bottleFields(b.bottle || {}) }));
-      break;
+    // Les bouteilles sont saisies par leurs propriétaires. L'organisateur ne peut
+    // corriger une bouteille qu'APRÈS la révélation (faute de frappe, etc.).
     case 'updateBottle':
+      if (!revealed) throw new HttpError(403, 'Seul le propriétaire peut modifier sa bouteille avant la révélation.');
       unwrap(await one(db().from('bottles').update(bottleFields(b.bottle || {})).eq('id', b.id)));
-      break;
-    case 'deleteBottle':
-      if (!prep) throw new HttpError(400, 'Les bouteilles ne peuvent être supprimées qu’avant le début de la dégustation.');
-      unwrap(await one(db().from('bottles').delete().eq('id', b.id)));
       break;
 
     // ----- Numéros anonymes -----

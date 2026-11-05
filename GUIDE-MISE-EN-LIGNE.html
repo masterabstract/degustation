@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide de mise en ligne</title>
+<style>
+  :root { --lie:#4a0e1e; --bordeaux:#6b1a2b; --creme:#f7f0e4; --papier:#fffbf4; --or:#b8913f; --or-clair:#e3cc8e; --encre:#2a1a1c; --taupe:#76625f; --trait:#e6d9c3; --vert:#3d6b4a; --rouge:#a3261f; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--creme); color:var(--encre); font: 17px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { background:var(--lie); color:var(--creme); border-bottom:3px solid var(--or); padding:36px 20px 28px; }
+  header div, main { max-width: 760px; margin: 0 auto; }
+  header h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; font-size: 2.2rem; line-height:1.1; margin:0 0 8px; }
+  header p { color: var(--or-clair); margin:0; }
+  main { padding: 24px 20px 80px; }
+  section { background:var(--papier); border:1px solid var(--trait); border-radius:14px; padding:22px 20px; margin-bottom:20px; }
+  h2 { font-family: Georgia, serif; color:var(--lie); font-size:1.55rem; margin:0 0 4px; display:flex; gap:12px; align-items:baseline; }
+  h2 .n { display:inline-grid; place-items:center; width:38px; height:38px; flex:none; border-radius:50%; background:var(--lie); color:var(--creme); box-shadow: inset 0 0 0 2px var(--or); font-size:1.1rem; }
+  h3 { margin: 22px 0 6px; font-size: 1.05rem; color: var(--bordeaux); }
+  .time { color: var(--taupe); font-size: .9rem; margin: 0 0 12px 50px; }
+  ol, ul { padding-left: 1.3em; }
+  li { margin: 6px 0; }
+  li::marker { color: var(--or); font-weight: 700; }
+  code, kbd { background:#f1e7d4; border-radius:5px; padding:1px 6px; font-size:.92em; font-family: Consolas, "Courier New", monospace; }
+  kbd { border:1px solid #d9c8a8; }
+  .btn { display:inline-block; background:var(--bordeaux); color:var(--creme); padding:1px 8px; border-radius:6px; font-weight:600; font-size:.92em; white-space:nowrap; }
+  .box { border-radius:10px; padding:12px 14px; margin:14px 0; }
+  .warn { background:#f8e3e0; border:1px solid #ecc4be; color:#6f1a14; }
+  .tip { background:#f3ead6; border:1px solid var(--or-clair); }
+  .ok { background:#e6efe5; border:1px solid #c8dcc8; color:#24452f; }
+  table { width:100%; border-collapse: collapse; font-size: .95rem; }
+  td, th { text-align:left; border-bottom:1px solid var(--trait); padding:9px 6px; vertical-align: top; }
+  th { color: var(--taupe); font-weight: 600; }
+  .notepad { background:#fff; border:1px dashed var(--or); border-radius:10px; padding:12px 14px; font-family: Consolas, monospace; font-size:.9rem; white-space: pre-wrap; }
+  nav ol { columns: 2; column-gap: 30px; }
+  @media (max-width:600px) { nav ol { columns:1; } .time { margin-left:0; } }
+  a { color: var(--bordeaux); }
+</style>
+</head>
+<body>
+<header><div>
+  <h1>Mettre le site en ligne</h1>
+  <p>Guide pas à pas pour Windows, sans aucune connaissance en programmation. Comptez 30 à 45 minutes la première fois.</p>
+</div></header>
+<main>
+
+<section>
+  <h2>Avant de commencer</h2>
+  <p>Vous allez créer trois comptes gratuits, puis relier les trois services entre eux :</p>
+  <ul>
+    <li><strong>Supabase</strong> : la base de données, où sont rangées les bouteilles, les fiches et les pronostics.</li>
+    <li><strong>GitHub</strong> : un « casier » en ligne qui contient les fichiers du site.</li>
+    <li><strong>Vercel</strong> : l’hébergeur, qui lit les fichiers sur GitHub et met le site en ligne à une adresse du type <code>votre-site.vercel.app</code>.</li>
+  </ul>
+  <p>Il vous faut un ordinateur Windows avec <strong>Chrome</strong> ou <strong>Edge</strong>, et une adresse e-mail. Rien à installer.</p>
+  <div class="box tip"><strong>Ouvrez le Bloc-notes</strong> (touche Windows, tapez <em>Bloc-notes</em>, Entrée) et gardez-le ouvert : vous allez y noter quatre ou cinq informations au fil du guide.
+    <div class="notepad" style="margin-top:10px">Mot de passe base Supabase :
+SUPABASE_URL :
+SUPABASE_SECRET_KEY :
+ORGANIZER_PASSWORD :
+ANTHROPIC_API_KEY (facultatif) :</div>
+  </div>
+  <p class="box tip" style="margin-bottom:0">Les sites Supabase, GitHub et Vercel sont en anglais. Les noms de boutons sont indiqués <span class="btn">comme ceci</span>. Ils peuvent légèrement changer avec le temps : cherchez le bouton le plus proche.</p>
+</section>
+
+<nav class="box tip">
+  <strong>Les étapes</strong>
+  <ol>
+    <li>Décompresser le projet</li>
+    <li>Créer la base de données</li>
+    <li>Déposer les fichiers sur GitHub</li>
+    <li>Mettre en ligne avec Vercel</li>
+    <li>Vérifier et faire une répétition</li>
+    <li>Le jour de la soirée</li>
+    <li>Sauvegardes</li>
+    <li>En cas de problème</li>
+  </ol>
+</nav>
+
+<section>
+  <h2><span class="n">1</span>Décompresser le projet</h2>
+  <p class="time">2 minutes</p>
+  <ol>
+    <li>Repérez le fichier <code>degustation-aveugle.zip</code> téléchargé (en général dans <em>Téléchargements</em>).</li>
+    <li>Faites un <strong>clic droit</strong> dessus, puis <span class="btn">Extraire tout…</span>, puis <span class="btn">Extraire</span>.</li>
+    <li>Un dossier <code>degustation-aveugle</code> s’ouvre. Il contient notamment les dossiers <code>app</code>, <code>components</code>, <code>lib</code>, <code>supabase</code> et le fichier <code>package.json</code>.</li>
+  </ol>
+  <div class="box warn">Si en ouvrant le dossier vous voyez un seul sous-dossier <code>degustation-aveugle</code>, entrez dedans : c’est ce niveau-là (celui qui contient <code>package.json</code>) qui compte pour la suite.</div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>Créer la base de données Supabase</h2>
+  <p class="time">10 minutes</p>
+
+  <h3>2.1 Créer le compte et le projet</h3>
+  <ol>
+    <li>Allez sur <a href="https://supabase.com" target="_blank">supabase.com</a> et cliquez sur <span class="btn">Start your project</span>.</li>
+    <li>Créez un compte (le plus simple : avec votre e-mail, ou avec GitHub si vous créez GitHub d’abord). Validez l’e-mail de confirmation si on vous le demande.</li>
+    <li>Si on vous demande de créer une « organisation », donnez-lui votre prénom et choisissez le plan <strong>Free</strong>.</li>
+    <li>Cliquez sur <span class="btn">New project</span> et remplissez :
+      <ul>
+        <li><strong>Project name</strong> : <code>degustation</code></li>
+        <li><strong>Database Password</strong> : cliquez sur <span class="btn">Generate a password</span>, puis copiez-le dans votre Bloc-notes. Vous n’en aurez normalement plus besoin, mais gardez-le.</li>
+        <li><strong>Region</strong> : choisissez <strong>West EU (Paris)</strong> ou, à défaut, une région européenne.</li>
+      </ul>
+    </li>
+    <li>Cliquez sur <span class="btn">Create new project</span> et patientez 1 à 2 minutes : le projet se prépare.</li>
+  </ol>
+
+  <h3>2.2 Créer les tables avec le script fourni</h3>
+  <ol>
+    <li>Dans votre dossier, ouvrez <code>supabase</code>, faites un clic droit sur <code>schema.sql</code>, puis <span class="btn">Ouvrir avec</span> &gt; <span class="btn">Bloc-notes</span>.</li>
+    <li>Dans ce Bloc-notes, sélectionnez tout avec <kbd>Ctrl</kbd> + <kbd>A</kbd>, puis copiez avec <kbd>Ctrl</kbd> + <kbd>C</kbd>.</li>
+    <li>Dans Supabase, dans le menu de gauche, cliquez sur <span class="btn">SQL Editor</span> (icône <code>&gt;_</code>).</li>
+    <li>Cliquez dans la grande zone de texte (créez une requête avec <span class="btn">New query</span> si besoin), puis collez avec <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li>
+    <li>Cliquez sur <span class="btn">Run</span> en bas à droite (ou <kbd>Ctrl</kbd> + <kbd>Entrée</kbd>).</li>
+    <li>Le message <strong>Success. No rows returned</strong> doit s’afficher. Si Supabase affiche un avertissement du type « destructive operation », confirmez : le script ne supprime aucune donnée.</li>
+  </ol>
+  <div class="box ok">Vérification : dans le menu de gauche, ouvrez <span class="btn">Table Editor</span>. Vous devez voir 5 tables : <code>bottles</code>, <code>participants</code>, <code>predictions</code>, <code>ratings</code>, <code>tastings</code>.</div>
+
+  <h3>2.3 Récupérer l’adresse et la clé secrète</h3>
+  <ol>
+    <li><strong>L’adresse du projet (SUPABASE_URL).</strong> Regardez la barre d’adresse de votre navigateur : elle ressemble à <code>supabase.com/dashboard/project/<strong>abcdefghijkl</strong></code>. Ces 20 lettres environ sont l’identifiant du projet. Votre adresse est donc :<br><code>https://abcdefghijkl.supabase.co</code><br>Notez-la dans le Bloc-notes. (Elle apparaît aussi dans <span class="btn">Project Settings</span> &gt; <span class="btn">Data API</span>, ou via le bouton <span class="btn">Connect</span> en haut de la page du projet.)</li>
+    <li><strong>La clé secrète (SUPABASE_SECRET_KEY).</strong> Cliquez sur la roue dentée <span class="btn">Project Settings</span> en bas du menu de gauche, puis sur <span class="btn">API Keys</span>.</li>
+    <li>Dans la partie <strong>Secret keys</strong>, une clé commençant par <code>sb_secret_</code> est affichée de façon masquée. Cliquez sur l’icône pour l’afficher ou la copier, et collez-la dans le Bloc-notes. Si aucune clé secrète n’existe, cliquez sur <span class="btn">Add new secret key</span>.</li>
+  </ol>
+  <div class="box warn"><strong>Ne partagez jamais cette clé secrète</strong> (ni par message, ni en capture d’écran). Elle donne un accès complet à la base. Elle ne sera saisie qu’à un seul endroit : dans Vercel, à l’étape 4.<br>Si vous ne trouvez que d’anciennes clés nommées <code>anon</code> et <code>service_role</code> (onglet « Legacy API keys »), c’est la clé <strong>service_role</strong> qu’il faut utiliser, jamais la clé <code>anon</code>.</div>
+
+  <h3>2.4 Choisir le mot de passe organisateur</h3>
+  <p>Inventez un mot de passe simple à taper sur téléphone, par exemple <code>Chambertin2026</code>, et notez-le dans le Bloc-notes à la ligne <code>ORGANIZER_PASSWORD</code>. Il vous sera demandé pour créer une soirée, et empêche des inconnus d’en créer sur votre site.</p>
+</section>
+
+<section>
+  <h2><span class="n">3</span>Déposer les fichiers sur GitHub</h2>
+  <p class="time">10 minutes, sans installer Git</p>
+  <ol>
+    <li>Allez sur <a href="https://github.com/signup" target="_blank">github.com/signup</a> et créez un compte gratuit (e-mail, mot de passe, nom d’utilisateur, puis le code reçu par e-mail).</li>
+    <li>Une fois connecté, cliquez sur le <strong>+</strong> en haut à droite, puis <span class="btn">New repository</span>.</li>
+    <li>Remplissez :
+      <ul>
+        <li><strong>Repository name</strong> : <code>degustation-aveugle</code></li>
+        <li>Cochez <strong>Private</strong> (privé).</li>
+        <li>Ne cochez <strong>rien d’autre</strong> (pas de README, pas de .gitignore, pas de licence).</li>
+      </ul>
+    </li>
+    <li>Cliquez sur <span class="btn">Create repository</span>.</li>
+    <li>Sur la page qui s’affiche, repérez la phrase « …or create a new file or <strong>uploading an existing file</strong> » et cliquez sur le lien <span class="btn">uploading an existing file</span>.</li>
+    <li>Ouvrez votre dossier <code>degustation-aveugle</code> dans l’Explorateur Windows (celui qui contient <code>package.json</code>). Sélectionnez <strong>tout son contenu</strong> avec <kbd>Ctrl</kbd> + <kbd>A</kbd>.</li>
+    <li>Faites glisser cette sélection dans la zone « Drag files here » de la page GitHub. Attendez que la liste des fichiers apparaisse (une trentaine de fichiers, avec leurs dossiers).</li>
+    <li>En bas de la page, cliquez sur le bouton vert <span class="btn">Commit changes</span>.</li>
+  </ol>
+  <div class="box ok">Vérification : la page de votre dépôt affiche les dossiers <code>app</code>, <code>components</code>, <code>lib</code>, <code>supabase</code> et les fichiers <code>package.json</code>, <code>next.config.mjs</code>… <strong>directement à la racine</strong>, pas à l’intérieur d’un dossier <code>degustation-aveugle</code>.</div>
+  <div class="box warn">Si vous voyez un unique dossier <code>degustation-aveugle</code> à la racine, vous avez glissé le dossier au lieu de son contenu. Le plus simple : supprimez le dépôt (<span class="btn">Settings</span>, tout en bas <span class="btn">Delete this repository</span>) et recommencez cette étape.</div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>Mettre en ligne avec Vercel</h2>
+  <p class="time">5 à 10 minutes</p>
+  <ol>
+    <li>Allez sur <a href="https://vercel.com/signup" target="_blank">vercel.com/signup</a>. Choisissez <strong>Hobby</strong> (gratuit, usage personnel), donnez votre nom, puis <span class="btn">Continue with GitHub</span> et autorisez l’accès.</li>
+    <li>Sur le tableau de bord, cliquez sur <span class="btn">Add New…</span> &gt; <span class="btn">Project</span>.</li>
+    <li>Dans « Import Git Repository », votre dépôt <code>degustation-aveugle</code> doit apparaître. S’il n’apparaît pas, cliquez sur <span class="btn">Adjust GitHub App Permissions</span> (ou <span class="btn">Install</span>), autorisez l’accès au dépôt, puis revenez.</li>
+    <li>Cliquez sur <span class="btn">Import</span> à côté du dépôt.</li>
+    <li>Sur la page de configuration, ne changez rien au « Framework Preset » (Vercel reconnaît <strong>Next.js</strong> tout seul). Dépliez la partie <span class="btn">Environment Variables</span>.</li>
+    <li>Ajoutez les trois variables, une par une. Pour chacune : tapez le nom dans <strong>Key</strong>, collez la valeur depuis votre Bloc-notes dans <strong>Value</strong>, puis <span class="btn">Add</span>.
+      <table style="margin-top:8px">
+        <tr><th>Key (nom exact)</th><th>Value</th></tr>
+        <tr><td><code>SUPABASE_URL</code></td><td>l’adresse <code>https://….supabase.co</code></td></tr>
+        <tr><td><code>SUPABASE_SECRET_KEY</code></td><td>la clé <code>sb_secret_…</code></td></tr>
+        <tr><td><code>ORGANIZER_PASSWORD</code></td><td>votre mot de passe organisateur</td></tr>
+        <tr><td><code>ANTHROPIC_API_KEY</code> <em>(facultatif)</em></td><td>la clé de l’IA pour lire les étiquettes en photo (voir l’encadré « Lecture des étiquettes par photo » ci-dessous)</td></tr>
+      </table>
+      Attention aux espaces en trop au début ou à la fin des valeurs collées.
+    </li>
+    <li>Cliquez sur <span class="btn">Deploy</span>. Vercel construit le site pendant 1 à 2 minutes.</li>
+    <li>Quand des confettis et « Congratulations » s’affichent, cliquez sur <span class="btn">Continue to Dashboard</span>. L’adresse de votre site est indiquée sous <strong>Domains</strong>, du type <code>degustation-aveugle.vercel.app</code> (parfois avec quelques lettres en plus). Notez-la.</li>
+  </ol>
+  <div class="box tip">Vous pouvez changer cette adresse : <span class="btn">Settings</span> &gt; <span class="btn">Domains</span>, puis modifiez le nom en <code>…vercel.app</code> (par exemple <code>soiree-vin-mec.vercel.app</code>), s’il est libre.</div>
+  <div class="box warn">Si vous modifiez une variable plus tard (onglet <span class="btn">Settings</span> &gt; <span class="btn">Environment Variables</span>), il faut relancer le site : onglet <span class="btn">Deployments</span>, les trois petits points du dernier déploiement, <span class="btn">Redeploy</span>.</div>
+</section>
+
+<section>
+  <h2>Lecture des étiquettes par photo (facultatif)</h2>
+  <p>Avec cette option, un bouton <span class="btn">Photographier l’étiquette</span> apparaît quand un invité ajoute sa bouteille. L’IA Claude lit la photo et remplit le formulaire. L’invité vérifie, corrige, puis enregistre. La photo n’est pas conservée, et le résultat n’est envoyé qu’au téléphone qui l’a prise.</p>
+  <p>Sans cette option, tout fonctionne aussi : le bouton est simplement absent et la saisie se fait à la main.</p>
+  <h3>Obtenir la clé</h3>
+  <ol>
+    <li>Allez sur <a href="https://platform.claude.com" target="_blank">platform.claude.com</a> (la Claude Console) et créez un compte.</li>
+    <li>Dans la partie <span class="btn">Billing</span> (facturation), ajoutez un petit crédit. Une photo coûte moins d’un centime : quelques euros suffisent pour de nombreuses soirées.</li>
+    <li>Dans <span class="btn">API Keys</span>, cliquez sur <span class="btn">Create Key</span>, nommez-la <code>degustation</code>, puis copiez la clé (elle commence par <code>sk-ant-</code>). Elle ne s’affiche qu’une fois : collez-la tout de suite dans votre Bloc-notes.</li>
+    <li>Dans Vercel, ajoutez la variable <code>ANTHROPIC_API_KEY</code> avec cette clé (<span class="btn">Settings</span> &gt; <span class="btn">Environment Variables</span>), puis <span class="btn">Redeploy</span>.</li>
+  </ol>
+  <div class="box warn">Comme la clé Supabase, cette clé est secrète : elle ne doit être saisie que dans Vercel.</div>
+  <div class="box tip">Conseils pour la photo : étiquette de face, bien éclairée, qui remplit l’écran. Vérifiez toujours le résultat, surtout le prix, qui est une estimation de l’IA.</div>
+</section>
+
+<section>
+  <h2><span class="n">5</span>Vérifier, puis faire une répétition générale</h2>
+  <p class="time">10 minutes, à faire avant le jour J</p>
+  <h3>5.1 Le contrôle automatique</h3>
+  <ol>
+    <li>Ouvrez dans votre navigateur l’adresse de votre site suivie de <code>/api/sante</code>, par exemple :<br><code>https://degustation-aveugle.vercel.app/api/sante</code></li>
+    <li>Vous devez lire : <strong>"ok":true</strong> et « Tout fonctionne : base de données connectée et configuration complète. »</li>
+    <li>Sinon, le message indique ce qui manque : reportez-vous à l’étape 8.</li>
+  </ol>
+  <h3>5.2 Une mini-soirée de test (avec 2 téléphones)</h3>
+  <ol>
+    <li>Sur votre téléphone, ouvrez l’adresse du site, puis <span class="btn">Créer une dégustation</span>. Nommez-la « Test », ajoutez deux prénoms, tapez le mot de passe organisateur.</li>
+    <li><strong>Copiez le lien organisateur</strong> qui s’affiche et envoyez-le vous par e-mail. Puis <span class="btn">Ouvrir l’espace organisateur</span>.</li>
+    <li>Sur un 2e téléphone (ou en navigation privée), allez sur le site, tapez le code à 5 caractères et choisissez un prénom. Dans <strong>Mes bouteilles</strong>, ajoutez une bouteille (essayez la photo si vous l’avez activée).</li>
+    <li>Sur le téléphone organisateur, onglet <strong>Bouteilles</strong> : la bouteille est comptée, sans aucun détail. Cliquez sur <span class="btn">Tirer les numéros au sort</span>, puis, onglet <strong>Soirée</strong>, sur <span class="btn">Lancer la dégustation</span>.</li>
+    <li>Sur le 2e téléphone, le vin apparaît : remplissez la fiche, « Enregistré » s’affiche en bas. Sur le téléphone organisateur, l’onglet <strong>Suivi</strong> se met à jour en quelques secondes.</li>
+    <li>Onglet <strong>Révélation</strong> : <span class="btn">Révéler les bouteilles</span> puis <span class="btn">Confirmer la révélation</span>. Sur le 2e téléphone, l’annonce de la révélation apparaît toute seule, avec les résultats.</li>
+  </ol>
+  <div class="box ok">Si ces 6 points fonctionnent, le site est prêt pour la soirée. Vous pouvez laisser la soirée « Test » : elle n’apparaît nulle part ailleurs.</div>
+</section>
+
+<section>
+  <h2><span class="n">6</span>Le jour de la soirée</h2>
+  <p>Le principe : <strong>chaque invité enregistre lui-même ses bouteilles sur son téléphone</strong>. Personne d’autre ne les voit avant la révélation, pas même vous.</p>
+  <h3>Avant l’arrivée des invités</h3>
+  <ol>
+    <li>Créez la vraie soirée et ajoutez les 9 participants. <strong>Gardez le lien organisateur</strong> (e-mail à vous-même).</li>
+    <li>Envoyez à chacun le lien direct (onglet Soirée, <span class="btn">Copier le lien à partager</span>). Les invités peuvent enregistrer leurs bouteilles <strong>dès maintenant, depuis chez eux</strong>, ou en arrivant.</li>
+  </ol>
+  <h3>Les bouteilles</h3>
+  <ol>
+    <li>Chaque invité ouvre le lien, touche son prénom, puis <span class="btn">Ajouter ma bouteille</span> (à la main ou en photo).</li>
+    <li>Dans votre onglet <strong>Bouteilles</strong>, vous voyez seulement combien de bouteilles chacun a enregistrées. Un « Aucune » en rouge signale quelqu’un qui n’a pas encore saisi la sienne.</li>
+    <li>Quand tout le monde a fini : <span class="btn">Tirer les numéros au sort</span>. Sur son téléphone, chaque invité lit alors « Masquez la bouteille et écrivez dessus : n°7 ». Il masque sa bouteille (chaussette, papier aluminium), y écrit son numéro, et la pose avec les autres.</li>
+    <li>Onglet <strong>Ordre</strong> : <span class="btn">Appliquer l’ordre conseillé</span>. Le site range les vins (bulles, blancs, rosés, rouges, doux) d’après les couleurs saisies par les invités, sans vous les montrer. Servez dans cet ordre.</li>
+    <li>Une bouteille arrive en retard ? Son propriétaire l’ajoute, puis vous cliquez sur <span class="btn">Numéroter les nouvelles</span> : les numéros déjà écrits ne changent pas.</li>
+  </ol>
+  <h3>Pendant la dégustation</h3>
+  <ol>
+    <li><span class="btn">Lancer la dégustation</span> : les vins apparaissent sur tous les téléphones en quelques secondes. L’ajout de bouteilles se ferme.</li>
+    <li>Chacun voit « votre bouteille » à côté de la sienne. Il peut la noter pour le plaisir, mais sa note et ses pronostics sur ce vin ne comptent pas.</li>
+    <li>Suivez l’avancement dans l’onglet <strong>Suivi</strong>. Quelqu’un a changé de téléphone ? Onglet Participants, <span class="btn">Libérer</span> à côté de son nom : il pourra se reconnecter et retrouvera ses notes et ses bouteilles.</li>
+  </ol>
+  <h3>La révélation</h3>
+  <ol>
+    <li>Téléchargez d’abord une sauvegarde (onglet Soirée, <span class="btn">Télécharger la sauvegarde</span>). Avant la révélation, elle ne contient pas le détail des bouteilles, pour que vous ne puissiez pas les voir.</li>
+    <li>Onglet <strong>Révélation</strong> : vérifiez que tout le monde a fini, puis révélez. C’est <strong>définitif</strong> : fiches et pronostics sont verrouillés.</li>
+    <li>Chacun voit sur son téléphone : le classement des vins (avec qui les a apportés et leur petit mot), le classement des dégustateurs, les commentaires et le résumé de la soirée, à copier pour WhatsApp.</li>
+    <li>Après la révélation, vous voyez enfin les bouteilles dans l’onglet Bouteilles, et pouvez corriger une faute de frappe : les classements se recalculent. Téléchargez alors la sauvegarde finale, complète.</li>
+  </ol>
+  <div class="box tip"><strong>Règles de calcul</strong> : la note d’un vin est la moyenne des notes sur 20, sans celle de la personne qui l’a apporté. Les pronostics rapportent jusqu’à 17 points par vin (couleur 2, cépage 3, région 3, appellation 4, millésime 3 / 2 / 1 selon l’écart, prix 2 / 1). Personne ne marque de points sur sa propre bouteille. Les majuscules et les accents sont ignorés pour le cépage et l’appellation.</div>
+</section>
+
+<section>
+  <h2><span class="n">7</span>Sauvegardes</h2>
+  <p>Le plan gratuit de Supabase ne fait pas de sauvegarde automatique de la base. Le site vous permet d’en faire vous-même, en un clic :</p>
+  <ul>
+    <li>Espace organisateur, onglet <strong>Soirée</strong> : <span class="btn">Télécharger la sauvegarde</span>. Un fichier <code>.json</code> contenant toute la soirée (participants, bouteilles, fiches, pronostics et, après la révélation, les résultats) est enregistré dans vos Téléchargements.</li>
+    <li>Faites-le au moins <strong>juste avant la révélation</strong> et <strong>juste après</strong>.</li>
+  </ul>
+  <div class="box tip">Un projet Supabase gratuit se met en veille après une semaine sans activité. Il suffit alors d’ouvrir le projet sur supabase.com et de cliquer sur <span class="btn">Restore project</span> : les données sont conservées. Pour ce week-end, aucun risque si vous faites la répétition dans la semaine.</div>
+</section>
+
+<section>
+  <h2><span class="n">8</span>En cas de problème</h2>
+  <table>
+    <tr><th>Ce que vous voyez</th><th>Que faire</th></tr>
+    <tr><td>Vercel affiche « Build Failed »</td><td>Vérifiez sur GitHub que <code>package.json</code> est bien à la racine du dépôt (étape 3). Sinon, envoyez-moi le texte rouge du journal de construction.</td></tr>
+    <tr><td><code>/api/sante</code> indique une variable manquante</td><td>Ajoutez-la dans Vercel, <span class="btn">Settings</span> &gt; <span class="btn">Environment Variables</span>, puis <span class="btn">Redeploy</span>.</td></tr>
+    <tr><td><code>/api/sante</code> indique que la base ne répond pas</td><td>Vérifiez l’adresse (elle finit par <code>.supabase.co</code>, sans <code>/</code> à la fin), la clé (elle commence par <code>sb_secret_</code>), et que le script SQL a bien affiché « Success ». Puis <span class="btn">Redeploy</span>.</td></tr>
+    <tr><td>« Mot de passe organisateur incorrect »</td><td>Comparez avec la valeur de <code>ORGANIZER_PASSWORD</code> dans Vercel (majuscules comprises).</td></tr>
+    <tr><td>Un participant ne peut pas choisir son nom (barré)</td><td>Son nom est déjà utilisé par un autre téléphone. Onglet Participants : <span class="btn">Libérer</span>.</td></tr>
+    <tr><td>L’organisateur a perdu l’accès à l’espace organisateur</td><td>Rouvrez le lien organisateur reçu à la création (celui avec <code>?cle=</code>).</td></tr>
+    <tr><td>La lecture de la photo échoue</td><td>Le message indique la cause (clé invalide, crédit épuisé, photo illisible). L’invité peut toujours saisir la bouteille à la main.</td></tr>
+    <tr><td>« Non enregistré, nouvel essai… » sur une fiche</td><td>Le réseau est faible. Rien n’est perdu : la fiche est gardée sur le téléphone et renvoyée automatiquement dès que la connexion revient.</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Pourquoi personne ne peut tricher</h2>
+  <ul>
+    <li><strong>Chaque bouteille n’est visible que par son propriétaire</strong> jusqu’à la révélation. L’organisateur ne voit que le nombre de bouteilles par personne et les numéros, jamais leur contenu ni qui a apporté quel numéro.</li>
+    <li>Les téléphones ne communiquent <strong>jamais directement</strong> avec la base de données. Ils passent par le serveur du site (Vercel), seul à connaître la clé secrète, et qui ne renvoie à chacun que ce qu’il a le droit de voir. Inspecter la page ou ses requêtes ne montre rien de plus.</li>
+    <li>La base Supabase est verrouillée : sécurité par ligne (RLS) activée sans aucune règle publique, et droits retirés aux accès publics. Même avec la clé publique du projet, une lecture directe est refusée.</li>
+    <li>Les numéros sont tirés au sort : ils ne correspondent pas à l’ordre de saisie.</li>
+    <li>Chaque prénom n’est utilisable que sur un seul téléphone à la fois. Les pronostics sont verrouillés par la base elle-même dès la révélation.</li>
+    <li>La photo d’une étiquette part du téléphone vers le serveur du site, puis vers l’IA pour être lue. Elle n’est jamais enregistrée, et le résultat ne revient qu’à ce téléphone.</li>
+  </ul>
+  <p class="small" style="color:var(--taupe)">Seule limite théorique : l’organisateur pourrait « libérer » un invité puis se connecter sous son prénom pour voir ses bouteilles. L’invité serait alors immédiatement déconnecté sur son téléphone, donc il s’en apercevrait.</p>
+</section>
+
+</main>
+</body>
+</html>

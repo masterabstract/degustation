@@ -77,6 +77,7 @@ function Wines({ data }) {
               {w.owner ? `Apportée par ${w.owner}` : ''}
               {w.topAromas.length ? `${w.owner ? ' · ' : ''}${w.topAromas.join(', ').toLowerCase()}` : ''}
             </div>
+            {w.notes && <div className="facts" style={{ fontStyle: 'italic' }}>« {w.notes} »</div>}
             {w.myNote !== null && <div className="tiny" style={{ marginTop: 4 }}>Votre note : {fmtNote(w.myNote)}/20</div>}
           </div>
           <div className="score">

@@ -191,6 +191,9 @@ export default function SheetPage({ code, number }) {
             </Link>
           </div>
         )}
+        {(state.myBottles || []).some((m) => m.id === bottle.id) && (
+          <Notice kind="info">C’est votre bouteille : vous pouvez la noter pour le plaisir, mais votre note et vos pronostics ne comptent pas.</Notice>
+        )}
         {locked && state.tasting.phase === 'preparation' && <Notice kind="info">La dégustation est en pause : vos saisies reprendront dès sa relance.</Notice>}
 
         {tab === 'fiche' && (

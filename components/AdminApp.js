@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { api, usePolling, Band, Notice, Capsule, Chips, Loading, fmtDate } from './ui';
-import { COLORS, REGIONS, PRICE_RANGES, GRAPES } from '@/lib/constants';
+import BottleForm from './BottleForm';
 
 const PHASE_LABEL = {
   preparation: 'En préparation',
@@ -153,11 +153,11 @@ function TabHome({ data, act, busy, code, setTab }) {
   const joinUrl = typeof window !== 'undefined' ? `${window.location.origin}/t/${code}` : '';
   const numbered = bottles.length > 0 && bottles.every((b) => b.number);
   const connected = participants.filter((p) => p.connected).length;
-  const owners = bottles.filter((b) => b.owner_id).length;
+  const without = participants.filter((p) => p.bottles === 0).length;
 
   const steps = [
     { done: participants.length > 0, text: `${participants.length} participant${participants.length > 1 ? 's' : ''} inscrit${participants.length > 1 ? 's' : ''}`, tab: 'participants' },
-    { done: bottles.length > 0, text: `${bottles.length} bouteille${bottles.length > 1 ? 's' : ''} enregistrée${bottles.length > 1 ? 's' : ''}${bottles.length ? `, ${owners} avec propriétaire` : ''}`, tab: 'bouteilles' },
+    { done: bottles.length > 0, text: `${bottles.length} bouteille${bottles.length > 1 ? 's' : ''} enregistrée${bottles.length > 1 ? 's' : ''} par les participants${without ? ` (${without} sans bouteille)` : ''}`, tab: 'bouteilles' },
     { done: numbered, text: numbered ? 'Numéros anonymes tirés au sort' : 'Numéros anonymes à tirer au sort', tab: 'bouteilles' },
     { done: bottles.length > 0 && bottles.every((b) => b.serve_order), text: 'Ordre de service défini', tab: 'service' },
   ];
@@ -243,9 +243,9 @@ function TabHome({ data, act, busy, code, setTab }) {
 
 // ---------------------------------------------------------------
 function TabParticipants({ data, act, busy }) {
-  const { participants, bottles, tasting } = data;
+  const { participants, tasting } = data;
   const [names, setNames] = useState('');
-  const bottlesOf = (id) => bottles.filter((b) => b.owner_id === id).length;
+  const bottlesOf = (id) => participants.find((p) => p.id === id)?.bottles ?? 0;
 
   return (
     <>
@@ -281,7 +281,7 @@ function TabParticipants({ data, act, busy }) {
                   checked={p.hors_concours}
                   onChange={(e) => act('updateParticipant', { id: p.id, hors_concours: e.target.checked })}
                 />
-                Hors concours pour les pronostics (connaît les bouteilles)
+                Hors concours pour les pronostics
               </label>
             </div>
             <div className="actions">
@@ -322,139 +322,51 @@ function TabParticipants({ data, act, busy }) {
 }
 
 // ---------------------------------------------------------------
-const EMPTY_BOTTLE = { wine_name: '', producer: '', owner_id: '', color: null, grapes: '', region: '', appellation: '', vintage: '', price_range: null, notes: '' };
-
-function BottleForm({ initial, participants, onSave, onCancel, busy }) {
-  const [b, setB] = useState({ ...EMPTY_BOTTLE, ...initial, vintage: initial?.vintage ?? '', owner_id: initial?.owner_id ?? '' });
-  const set = (k) => (v) => setB((x) => ({ ...x, [k]: v?.target ? v.target.value : v }));
-  return (
-    <form
-      className="stack"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSave(b);
-      }}
-    >
-      <label className="field">
-        <span>Nom du vin ou de la cuvée *</span>
-        <input className="input" value={b.wine_name} onChange={set('wine_name')} required maxLength={120} />
-      </label>
-      <label className="field">
-        <span>Domaine, château ou maison</span>
-        <input className="input" value={b.producer || ''} onChange={set('producer')} maxLength={120} />
-      </label>
-      <label className="field">
-        <span>Apportée par</span>
-        <select className="input" value={b.owner_id || ''} onChange={set('owner_id')}>
-          <option value="">Choisir un participant</option>
-          {participants.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="field">
-        <span className="chip-group-label" style={{ fontWeight: 600, color: 'var(--encre)', fontSize: '0.9rem' }}>
-          Couleur
-        </span>
-        <Chips options={COLORS} value={b.color} onChange={set('color')} />
-      </div>
-      <label className="field">
-        <span>Cépage(s)</span>
-        <input className="input" list="grapes-list" value={b.grapes || ''} onChange={set('grapes')} placeholder="Ex : Syrah, Grenache" maxLength={160} />
-      </label>
-      <div className="grid2 collapse">
-        <label className="field">
-          <span>Région</span>
-          <select className="input" value={b.region || ''} onChange={set('region')}>
-            <option value="">Choisir</option>
-            {REGIONS.map((r) => (
-              <option key={r}>{r}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>Millésime</span>
-          <input className="input" type="number" inputMode="numeric" min="1900" max="2100" value={b.vintage} onChange={set('vintage')} placeholder="Vide si non millésimé" />
-        </label>
-      </div>
-      <label className="field">
-        <span>Appellation</span>
-        <input className="input" value={b.appellation || ''} onChange={set('appellation')} placeholder="Ex : Crozes-Hermitage" maxLength={120} />
-      </label>
-      <div className="field">
-        <span className="chip-group-label" style={{ fontWeight: 600, color: 'var(--encre)', fontSize: '0.9rem' }}>
-          Gamme de prix
-        </span>
-        <Chips options={PRICE_RANGES} value={b.price_range} onChange={set('price_range')} />
-      </div>
-      <label className="field">
-        <span>Remarque (visible à la révélation par vous seul)</span>
-        <input className="input" value={b.notes || ''} onChange={set('notes')} maxLength={400} />
-      </label>
-      <datalist id="grapes-list">
-        {GRAPES.map((g) => (
-          <option key={g} value={g} />
-        ))}
-      </datalist>
-      <div className="row">
-        <button className="btn" disabled={busy || !b.wine_name.trim()}>
-          {initial?.id ? 'Enregistrer les modifications' : 'Ajouter la bouteille'}
-        </button>
-        {onCancel && (
-          <button type="button" className="btn ghost" onClick={onCancel}>
-            Annuler
-          </button>
-        )}
-      </div>
-    </form>
-  );
-}
-
 function bottleLine(b) {
   return [b.color, b.appellation, b.vintage, b.grapes].filter(Boolean).join(', ');
 }
 
 function TabBottles({ data, act, busy }) {
   const { bottles, participants, tasting } = data;
-  const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(null);
-  const ownerName = (id) => participants.find((p) => p.id === id)?.name;
   const prep = tasting.phase === 'preparation';
+  const revealed = tasting.phase === 'revelee';
   const missing = bottles.filter((b) => !b.number).length;
-  const sorted = [...bottles].sort((a, b) => (a.number ?? 999) - (b.number ?? 999));
+  const ownerName = (id) => participants.find((p) => p.id === id)?.name;
 
   return (
     <>
-      <Notice kind="info">Écran confidentiel : ne laissez personne regarder pendant que vous saisissez les bouteilles.</Notice>
-
-      {adding ? (
-        <div className="panel">
-          <h2>Nouvelle bouteille</h2>
-          <BottleForm
-            participants={participants}
-            busy={busy}
-            onCancel={() => setAdding(false)}
-            onSave={async (b) => (await act('addBottle', { bottle: b }, 'Bouteille ajoutée.')) && setAdding(false)}
-          />
-        </div>
-      ) : (
-        <button className="btn block" onClick={() => setAdding(true)}>
-          Ajouter une bouteille
-        </button>
+      {!revealed && (
+        <Notice kind="info">
+          Chaque participant enregistre ses bouteilles depuis son téléphone. Vous ne voyez ni leur contenu ni leur propriétaire : seulement leur nombre et leur numéro.
+        </Notice>
       )}
 
-      {prep && bottles.length > 0 && (
+      <div className="panel flush">
+        <div className="item" style={{ display: 'block' }}>
+          <h2 style={{ margin: 0 }}>Bouteilles par participant</h2>
+          <p className="small muted" style={{ margin: '4px 0 0' }}>
+            {bottles.length} bouteille{bottles.length > 1 ? 's' : ''} au total
+          </p>
+        </div>
+        {participants.map((p) => (
+          <div key={p.id} className="item" style={{ alignItems: 'center' }}>
+            <div className="grow name">{p.name}</div>
+            {p.bottles > 0 ? <span className="pill green">{p.bottles} bouteille{p.bottles > 1 ? 's' : ''}</span> : <span className="pill red">Aucune</span>}
+          </div>
+        ))}
+      </div>
+
+      {prep && (
         <div className="panel stack">
           <h2>Numéros anonymes</h2>
           <p className="small muted">
-            Chaque bouteille reçoit un numéro tiré au sort. Collez ce numéro sur la bouteille masquée (chaussette, papier aluminium, sac).
+            Quand toutes les bouteilles sont enregistrées, tirez les numéros au sort. Chaque participant voit alors sur son téléphone le numéro de ses bouteilles et l’écrit dessus après les avoir masquées (chaussette, papier aluminium).
           </p>
           <div className="row">
             <button
               className="btn gold"
-              disabled={busy}
+              disabled={busy || !bottles.length}
               onClick={() => (!tasting.numbers_drawn || confirm('Retirer au sort TOUS les numéros ? Les étiquettes déjà posées seront fausses.')) && act('drawNumbers', { mode: 'all' }, 'Numéros tirés au sort.')}
             >
               {tasting.numbers_drawn ? 'Retirer tous les numéros' : 'Tirer les numéros au sort'}
@@ -465,47 +377,50 @@ function TabBottles({ data, act, busy }) {
               </button>
             )}
           </div>
+          {bottles.length > 0 && (
+            <div className="row" style={{ gap: 8 }}>
+              {bottles.map((b) => (
+                <Capsule key={b.id} n={b.number} size="xs" />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      <div className="panel flush">
-        {bottles.length === 0 && <div className="item muted">Aucune bouteille enregistrée.</div>}
-        {sorted.map((b) =>
-          editing === b.id ? (
-            <div key={b.id} className="item" style={{ display: 'block' }}>
-              <BottleForm
-                initial={b}
-                participants={participants}
-                busy={busy}
-                onCancel={() => setEditing(null)}
-                onSave={async (x) => (await act('updateBottle', { id: b.id, bottle: x }, 'Bouteille modifiée.')) && setEditing(null)}
-              />
-            </div>
-          ) : (
-            <div key={b.id} className="item">
-              <Capsule n={b.number} size="sm" />
-              <div className="grow">
-                <div className="name">{[b.producer, b.wine_name].filter(Boolean).join(', ')}</div>
-                <div className="small muted">{bottleLine(b) || 'Détails à compléter'}</div>
-                <div className="tiny" style={{ marginTop: 4 }}>
-                  {ownerName(b.owner_id) ? `Apportée par ${ownerName(b.owner_id)}` : <span className="pill red">Propriétaire à indiquer</span>}
-                  {b.price_range ? ` · ${b.price_range}` : ''}
+      {revealed && (
+        <div className="panel flush">
+          <div className="item" style={{ display: 'block' }}>
+            <h2 style={{ margin: 0 }}>Bouteilles révélées</h2>
+            <p className="small muted" style={{ margin: '4px 0 0' }}>Vous pouvez corriger une faute : les classements se recalculent.</p>
+          </div>
+          {bottles.map((b) =>
+            editing === b.id ? (
+              <div key={b.id} className="item" style={{ display: 'block' }}>
+                <BottleForm
+                  initial={b}
+                  busy={busy}
+                  onCancel={() => setEditing(null)}
+                  onSave={async (x) => (await act('updateBottle', { id: b.id, bottle: x }, 'Bouteille corrigée.')) && setEditing(null)}
+                />
+              </div>
+            ) : (
+              <div key={b.id} className="item">
+                <Capsule n={b.number} size="sm" />
+                <div className="grow">
+                  <div className="name">{[b.producer, b.wine_name].filter(Boolean).join(', ')}</div>
+                  <div className="small muted">{bottleLine(b)}</div>
+                  <div className="tiny">{ownerName(b.owner_id) ? `Apportée par ${ownerName(b.owner_id)}` : ''}</div>
+                </div>
+                <div className="actions">
+                  <button className="btn ghost sm" onClick={() => setEditing(b.id)}>
+                    Corriger
+                  </button>
                 </div>
               </div>
-              <div className="actions">
-                <button className="btn ghost sm" onClick={() => setEditing(b.id)}>
-                  Modifier
-                </button>
-                {prep && (
-                  <button className="btn ghost sm" onClick={() => confirm('Supprimer cette bouteille ?') && act('deleteBottle', { id: b.id }, 'Bouteille supprimée.')}>
-                    Supprimer
-                  </button>
-                )}
-              </div>
-            </div>
-          )
-        )}
-      </div>
+            )
+          )}
+        </div>
+      )}
     </>
   );
 }
@@ -531,7 +446,9 @@ function TabOrder({ data, act, busy }) {
     <>
       <div className="panel stack">
         <h2>Ordre de service</h2>
-        <p className="small muted">Les participants verront les vins dans cet ordre. L’ordre conseillé : bulles, blancs, rosés, rouges, puis vins doux.</p>
+        <p className="small muted">
+          Les participants verront les vins dans cet ordre. L’ordre conseillé (bulles, blancs, rosés, rouges, puis vins doux) est calculé par le site à partir des couleurs saisies par les propriétaires, sans vous les montrer.
+        </p>
         <button className="btn gold" disabled={busy || locked || !bottles.length} onClick={() => act('autoOrder', {}, 'Ordre conseillé appliqué.')}>
           Appliquer l’ordre conseillé
         </button>
@@ -545,8 +462,8 @@ function TabOrder({ data, act, busy }) {
             </div>
             <Capsule n={b.number} size="sm" />
             <div className="grow">
-              <div className="name">{b.wine_name}</div>
-              <div className="small muted">{b.color || 'Couleur non indiquée'}</div>
+              <div className="name">Vin n°{b.number ?? '?'}</div>
+              {b.wine_name && <div className="small muted">{b.wine_name}</div>}
             </div>
             <div className="row" style={{ gap: 6 }}>
               <button className="btn ghost sm" aria-label="Monter" disabled={busy || locked || i === 0} onClick={() => move(i, -1)}>
@@ -651,14 +568,12 @@ function TabReveal({ data, act, busy, code }) {
     );
   }
 
-  const missingOwners = bottles.filter((b) => !b.owner_id).length;
   return (
     <div className="panel stack">
       <h2>Révéler les bouteilles</h2>
       <p>
         {progress.ratings.length} notes et {progress.predictions.length} pronostics enregistrés pour {participants.length} participants et {bottles.length} vins.
       </p>
-      {missingOwners > 0 && <Notice kind="error">{missingOwners} bouteille(s) sans propriétaire : le classement des dégustateurs en tiendra compte moins bien.</Notice>}
       <p className="small muted">
         La révélation est définitive : elle verrouille toutes les fiches et tous les pronostics, puis affiche les bouteilles et les classements à tout le monde.
       </p>

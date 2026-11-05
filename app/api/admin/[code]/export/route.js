@@ -14,15 +14,19 @@ export const GET = route(async (_req, { code }) => {
   ).map((r) => unwrap(r));
 
   const { admin_token_hash, ...t } = tasting;
+  const revealed = tasting.phase === 'revelee';
+  // Avant la révélation, la sauvegarde ne contient pas le contenu des bouteilles
+  // ni leurs propriétaires (l'organisateur ne doit pas les connaître).
+  const safeBottles = revealed ? bottles : bottles.map((b) => ({ id: b.id, number: b.number, serve_order: b.serve_order }));
   const clean = participants.map(({ token_hash, ...p }) => p);
   const data = {
     exported_at: new Date().toISOString(),
     tasting: t,
     participants: clean,
-    bottles,
+    bottles: safeBottles,
     ratings,
     predictions,
-    results: tasting.phase === 'revelee' ? computeResults({ tasting, participants: clean, bottles, ratings, predictions }) : null,
+    results: revealed ? computeResults({ tasting, participants: clean, bottles, ratings, predictions }) : null,
   };
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
   return new Response(JSON.stringify(data, null, 2), {

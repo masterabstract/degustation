@@ -17,7 +17,7 @@ export const GET = route(async (_req, { code }) => {
   const [participants, bottles, ratings, predictions] = (
     await Promise.all([
       q('participants', 'id, name, hors_concours'),
-      q('bottles', 'id, owner_id, number, serve_order, wine_name, producer, color, grapes, region, appellation, vintage, price_range'),
+      q('bottles', 'id, owner_id, number, serve_order, wine_name, producer, color, grapes, region, appellation, vintage, price_range, notes'),
       q('ratings', 'participant_id, bottle_id, note, aromes, commentaire'),
       q('predictions', 'participant_id, bottle_id, color, grapes, region, appellation, vintage, price_range'),
     ])
