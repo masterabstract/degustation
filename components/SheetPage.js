@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, Band, Notice, Capsule, Chips, Scale, NoteInput, Loading } from './ui';
+import Autocomplete from './Autocomplete';
+import { APPELLATION_OPTIONS, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
 import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
 
 const EMPTY_RATING = {
@@ -23,6 +25,8 @@ export default function SheetPage({ code, number }) {
   const [pred, setPred] = useState(EMPTY_PRED);
   const [save, setSave] = useState({ status: 'idle', msg: '' });
   const dirty = useRef({ rating: false, prediction: false });
+  const filled = useRef({});
+  const [autoNote, setAutoNote] = useState(null);
   const timer = useRef(null);
   const latest = useRef({ rating, pred });
   latest.current = { rating, pred };
@@ -244,49 +248,48 @@ export default function SheetPage({ code, number }) {
           <div className="panel" style={{ marginTop: 12 }}>
             <p className="small muted">D’après vous, quel est ce vin ? Vos pronostics restent secrets jusqu’à la révélation.</p>
             <Crit title="Appellation">
-              <input
-                className="input"
+              <Autocomplete
                 value={pred.appellation}
-                onChange={(e) => change('pred', { appellation: e.target.value })}
-                placeholder="Ex : Saint-Joseph"
+                onChange={(v) => change('pred', { appellation: v })}
+                options={APPELLATION_OPTIONS}
+                onPick={(o) => {
+                  const patch = fillFromAppellation({ ...pred, appellation: o.label }, o.label, filled.current);
+                  if (patch) change('pred', patch);
+                  setAutoNote(describePatch(patch));
+                }}
+                placeholder="Tapez les premières lettres, ex : gev"
                 aria-label="Appellation"
                 maxLength={120}
                 disabled={locked}
               />
+              {autoNote && <div className="autofill-note">{autoNote}</div>}
             </Crit>
             <Crit title="Cépage">
-              <input
-                className="input"
-                list="grapes-guess"
+              <Autocomplete
+                multi
                 value={pred.grapes}
-                onChange={(e) => change('pred', { grapes: e.target.value })}
+                onChange={(v) => change('pred', { grapes: v })}
+                options={GRAPES}
                 placeholder="Ex : Pinot Noir"
                 aria-label="Cépage"
                 maxLength={120}
                 disabled={locked}
               />
-              <datalist id="grapes-guess">
-                {GRAPES.map((g) => (
-                  <option key={g} value={g} />
-                ))}
-              </datalist>
             </Crit>
             <Crit title="Région">
-              <input
-                className="input"
-                list="regions-guess"
+              <Autocomplete
                 value={pred.region}
-                onChange={(e) => change('pred', { region: e.target.value })}
+                onChange={(v) => change('pred', { region: v })}
+                options={REGIONS}
+                onPick={(o) => {
+                  const patch = fillFromRegion({ ...pred, region: o.label }, o.label, filled.current);
+                  if (patch) change('pred', patch);
+                }}
                 placeholder="Ex : Bourgogne"
                 aria-label="Région"
                 maxLength={80}
                 disabled={locked}
               />
-              <datalist id="regions-guess">
-                {REGIONS.map((x) => (
-                  <option key={x} value={x} />
-                ))}
-              </datalist>
             </Crit>
             <Crit title="Pays">
               <select className="input" aria-label="Pays" value={pred.country} onChange={(e) => change('pred', { country: e.target.value })} disabled={locked}>

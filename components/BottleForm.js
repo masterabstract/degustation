@@ -1,6 +1,8 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import Autocomplete from './Autocomplete';
+import { APPELLATION_OPTIONS, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
 import { api, Chips, Notice, Spinner } from './ui';
 import { COLORS, COUNTRIES, REGIONS, GRAPES } from '@/lib/constants';
 
@@ -29,6 +31,8 @@ async function shrink(file, max = 1568) {
 
 export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl }) {
   const [b, setB] = useState({ ...EMPTY, ...clean(initial) });
+  const filled = useRef(initial?.id ? {} : { country: 'France' }); // ce qui a été rempli automatiquement
+  const [autoNote, setAutoNote] = useState(null);
   const [scan, setScan] = useState({ state: 'idle', msg: null });
   const fileRef = useRef(null);
   const set = (k) => (v) => setB((x) => ({ ...x, [k]: v?.target ? v.target.value : v }));
@@ -82,19 +86,43 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
         <span>Domaine, château ou maison *</span>
         <input className="input" value={b.producer} onChange={set('producer')} required maxLength={120} placeholder="Ex : Domaine Ogier" />
       </label>
-      <label className="field">
+      <div className="field">
         <span>Appellation</span>
-        <input className="input" value={b.appellation} onChange={set('appellation')} placeholder="Ex : Crozes-Hermitage" maxLength={120} />
-      </label>
-      <label className="field">
+        <Autocomplete
+          value={b.appellation}
+          onChange={set('appellation')}
+          options={APPELLATION_OPTIONS}
+          onPick={(o) => {
+            const patch = fillFromAppellation(b, o.label, filled.current);
+            if (patch) setB((x) => ({ ...x, ...patch }));
+            setAutoNote(describePatch(patch));
+          }}
+          placeholder="Tapez les premières lettres, ex : gev"
+          maxLength={120}
+          aria-label="Appellation"
+        />
+        {autoNote && <div className="autofill-note">{autoNote}</div>}
+      </div>
+      <div className="field">
         <span>Cépage(s)</span>
-        <input className="input" list="grapes-list" value={b.grapes} onChange={set('grapes')} placeholder="Ex : Syrah, Grenache" maxLength={160} />
-      </label>
+        <Autocomplete multi value={b.grapes} onChange={set('grapes')} options={GRAPES} placeholder="Ex : Syrah, Grenache" maxLength={160} aria-label="Cépage(s)" />
+      </div>
       <div className="grid2 collapse">
-        <label className="field">
+        <div className="field">
           <span>Région</span>
-          <input className="input" list="regions-list" value={b.region} onChange={set('region')} placeholder="Ex : Vallée du Rhône" maxLength={80} />
-        </label>
+          <Autocomplete
+            value={b.region}
+            onChange={set('region')}
+            options={REGIONS}
+            onPick={(o) => {
+              const patch = fillFromRegion(b, o.label, filled.current);
+              if (patch) setB((x) => ({ ...x, ...patch }));
+            }}
+            placeholder="Ex : Vallée du Rhône"
+            maxLength={80}
+            aria-label="Région"
+          />
+        </div>
         <label className="field">
           <span>Pays</span>
           <select className="input" value={b.country || ''} onChange={set('country')}>
@@ -128,16 +156,6 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
           </label>
         </div>
       </details>
-      <datalist id="regions-list">
-        {REGIONS.map((r) => (
-          <option key={r} value={r} />
-        ))}
-      </datalist>
-      <datalist id="grapes-list">
-        {GRAPES.map((g) => (
-          <option key={g} value={g} />
-        ))}
-      </datalist>
       <div className="row">
         <button className="btn" disabled={busy || !b.producer.trim()}>
           {initial?.id ? 'Enregistrer les modifications' : 'Enregistrer la bouteille'}
