@@ -9,7 +9,7 @@ import BottleForm from './BottleForm';
 export function ratingDone(r) {
   return r && r.note !== null && r.note !== undefined;
 }
-const PRED_KEYS = ['color', 'grapes', 'region', 'appellation', 'vintage', 'price_range'];
+const PRED_KEYS = ['appellation', 'grapes', 'region', 'country', 'color', 'vintage'];
 export function predictionDone(p) {
   return !!p && PRED_KEYS.some((k) => p[k] !== null && p[k] !== undefined && p[k] !== '');
 }
@@ -95,8 +95,7 @@ function WineList({ data, code }) {
                 <div className="grow">
                   <div className="title">Vin n°{b.number}</div>
                   <div className="tiny muted">
-                    {i === 0 ? '1er servi' : `${i + 1}e servi`}
-                    {mineIds.has(b.id) ? ' · votre bouteille' : ''}
+                    {mineIds.has(b.id) ? 'Votre bouteille' : ''}
                   </div>
                   <div className="ticks">
                     <span className={`tick ${ratingDone(s.rating) ? 'done' : ''}`}>
@@ -125,22 +124,20 @@ function Rules() {
       <div className="small" style={{ marginTop: 10 }}>
         <p>Pour chaque vin, vous gagnez :</p>
         <div className="breakdown">
-          <strong>{SCORING.color} pts</strong>
-          <span>couleur exacte</span>
+          <strong>{SCORING.appellation} pts</strong>
+          <span>appellation exacte</span>
           <strong>{SCORING.grapes} pts</strong>
           <span>un cépage juste</span>
           <strong>{SCORING.region} pts</strong>
           <span>région exacte</span>
-          <strong>{SCORING.appellation} pts</strong>
-          <span>appellation exacte</span>
+          <strong>{SCORING.country} pts</strong>
+          <span>pays exact</span>
+          <strong>{SCORING.color} pts</strong>
+          <span>couleur exacte</span>
           <strong>
             {SCORING.vintageExact}/{SCORING.vintageOne}/{SCORING.vintageTwo} pts
           </strong>
           <span>millésime exact, à 1 an, à 2 ans</span>
-          <strong>
-            {SCORING.priceExact}/{SCORING.priceNear} pts
-          </strong>
-          <span>gamme de prix exacte, voisine</span>
         </div>
         <p style={{ marginTop: 10 }}>
           Maximum {MAX_POINTS_PER_BOTTLE} points par vin. Votre propre bouteille ne compte ni dans votre score de pronostics, ni dans la note moyenne du vin.
@@ -290,8 +287,8 @@ function MyBottles({ data, code, onChange }) {
           <div key={b.id} className="row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
             <Capsule n={b.number} size="sm" />
             <div className="grow">
-              <div style={{ fontWeight: 700 }}>{[b.producer, b.wine_name].filter(Boolean).join(', ')}</div>
-              <div className="small muted">{[b.color, b.appellation, b.vintage].filter(Boolean).join(', ') || 'Détails à compléter'}</div>
+              <div style={{ fontWeight: 700 }}>{[b.producer, b.wine_name !== b.producer ? b.wine_name : null].filter(Boolean).join(', ')}</div>
+              <div className="small muted">{[b.appellation, b.grapes, b.region, b.country, b.color].filter(Boolean).join(', ') || 'Détails à compléter'}</div>
               {b.number ? (
                 tasting.phase === 'preparation' && (
                   <div className="small" style={{ color: 'var(--or-fonce)', fontWeight: 600 }}>

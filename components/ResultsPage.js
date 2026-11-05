@@ -11,7 +11,7 @@ const TABS = [
   ['resume', 'Résumé'],
 ];
 
-const DETAIL_LABELS = { color: 'Couleur', grapes: 'Cépage', region: 'Région', appellation: 'Appellation', vintage: 'Millésime', price: 'Prix' };
+const DETAIL_LABELS = { appellation: 'Appellation', grapes: 'Cépage', region: 'Région', country: 'Pays', color: 'Couleur', vintage: 'Millésime' };
 
 export default function ResultsPage({ code }) {
   const [data, setData] = useState(null);
@@ -59,7 +59,7 @@ export default function ResultsPage({ code }) {
 }
 
 function wineTitle(w) {
-  return [w.producer, w.wine_name].filter(Boolean).join(', ');
+  return [w.producer, w.wine_name !== w.producer ? w.wine_name : null].filter(Boolean).join(', ');
 }
 
 function Wines({ data }) {
@@ -71,8 +71,8 @@ function Wines({ data }) {
           <Capsule n={w.number} size="sm" />
           <div className="grow">
             <div className="wine-name">{wineTitle(w)}</div>
-            <div className="facts">{[w.appellation, w.vintage || 'Non millésimé', w.color].filter(Boolean).join(', ')}</div>
-            <div className="facts">{[w.grapes, w.region, w.price_range].filter(Boolean).join(' · ')}</div>
+            <div className="facts">{[w.appellation, w.vintage].filter(Boolean).join(', ')}</div>
+            <div className="facts">{[w.grapes, w.region, w.country, w.color].filter(Boolean).join(' · ')}</div>
             <div className="facts">
               {w.owner ? `Apportée par ${w.owner}` : ''}
               {w.topAromas.length ? `${w.owner ? ' · ' : ''}${w.topAromas.join(', ').toLowerCase()}` : ''}
@@ -153,7 +153,7 @@ function Tasters({ data }) {
 }
 
 function Comments({ data }) {
-  const withComments = [...data.wines].sort((a, b) => (a.serve_order ?? 0) - (b.serve_order ?? 0)).filter((w) => w.comments.length);
+  const withComments = [...data.wines].sort((a, b) => (a.number ?? 0) - (b.number ?? 0)).filter((w) => w.comments.length);
   if (!withComments.length) return <div className="panel muted">Aucun commentaire n’a été laissé.</div>;
   return withComments.map((w) => (
     <div key={w.id} className="panel">

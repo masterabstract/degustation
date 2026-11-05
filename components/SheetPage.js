@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, Band, Notice, Capsule, Chips, Scale, NoteInput, Loading } from './ui';
-import { ROBES, AROMES, SCALES, COLORS, REGIONS, PRICE_RANGES, GRAPES, NON_VINTAGE } from '@/lib/constants';
+import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
 
 const EMPTY_RATING = {
   robe: null, intensite_visuelle: null, intensite_nez: null, aromes: [], acidite: null,
   tanins: null, corps: null, equilibre: null, longueur: null, note: null, commentaire: '',
 };
-const EMPTY_PRED = { color: null, grapes: '', region: '', appellation: '', vintage: '', price_range: null };
+const EMPTY_PRED = { appellation: '', grapes: '', region: '', country: '', color: null, vintage: '' };
 
 const pick = (obj, keys) => Object.fromEntries(keys.map((k) => [k, obj?.[k] ?? null]));
 
@@ -42,7 +42,7 @@ export default function SheetPage({ code, number }) {
         const r = s.rating ? { ...EMPTY_RATING, ...pick(s.rating, Object.keys(EMPTY_RATING)) } : localRaw?.rating || EMPTY_RATING;
         const p = s.prediction ? { ...EMPTY_PRED, ...pick(s.prediction, Object.keys(EMPTY_PRED)) } : localRaw?.pred || EMPTY_PRED;
         setRating({ ...r, aromes: r.aromes || [], commentaire: r.commentaire || '' });
-        setPred({ ...p, grapes: p.grapes || '', region: p.region || '', appellation: p.appellation || '', vintage: p.vintage ?? '' });
+        setPred({ ...p, grapes: p.grapes || '', region: p.region || '', country: p.country || '', appellation: p.appellation || '', vintage: p.vintage ?? '' });
         if (!s.rating && localRaw?.rating) dirty.current.rating = true;
         if (!s.prediction && localRaw?.pred) dirty.current.prediction = true;
         if (dirty.current.rating || dirty.current.prediction) schedule(0);
@@ -166,7 +166,7 @@ export default function SheetPage({ code, number }) {
     <main>
       <Band
         title={`Vin n°${bottle.number}`}
-        sub={`${idx === 0 ? '1er' : `${idx + 1}e`} servi sur ${bottles.length}`}
+        sub={`${bottles.length} vins à déguster`}
         back={`/t/${code}`}
         right={<Capsule n={bottle.number} />}
       />
@@ -243,8 +243,16 @@ export default function SheetPage({ code, number }) {
         {tab === 'prono' && (
           <div className="panel" style={{ marginTop: 12 }}>
             <p className="small muted">D’après vous, quel est ce vin ? Vos pronostics restent secrets jusqu’à la révélation.</p>
-            <Crit title="Couleur du vin">
-              <Chips options={COLORS} value={pred.color} onChange={(v) => change('pred', { color: v })} disabled={locked} />
+            <Crit title="Appellation">
+              <input
+                className="input"
+                value={pred.appellation}
+                onChange={(e) => change('pred', { appellation: e.target.value })}
+                placeholder="Ex : Saint-Joseph"
+                aria-label="Appellation"
+                maxLength={120}
+                disabled={locked}
+              />
             </Crit>
             <Crit title="Cépage">
               <input
@@ -264,23 +272,32 @@ export default function SheetPage({ code, number }) {
               </datalist>
             </Crit>
             <Crit title="Région">
-              <select className="input" aria-label="Région" value={pred.region} onChange={(e) => change('pred', { region: e.target.value })} disabled={locked}>
-                <option value="">Choisir une région</option>
+              <input
+                className="input"
+                list="regions-guess"
+                value={pred.region}
+                onChange={(e) => change('pred', { region: e.target.value })}
+                placeholder="Ex : Bourgogne"
+                aria-label="Région"
+                maxLength={80}
+                disabled={locked}
+              />
+              <datalist id="regions-guess">
                 {REGIONS.map((x) => (
+                  <option key={x} value={x} />
+                ))}
+              </datalist>
+            </Crit>
+            <Crit title="Pays">
+              <select className="input" aria-label="Pays" value={pred.country} onChange={(e) => change('pred', { country: e.target.value })} disabled={locked}>
+                <option value="">Choisir un pays</option>
+                {COUNTRIES.map((x) => (
                   <option key={x}>{x}</option>
                 ))}
               </select>
             </Crit>
-            <Crit title="Appellation">
-              <input
-                className="input"
-                value={pred.appellation}
-                onChange={(e) => change('pred', { appellation: e.target.value })}
-                placeholder="Ex : Saint-Joseph"
-                aria-label="Appellation"
-                maxLength={120}
-                disabled={locked}
-              />
+            <Crit title="Couleur">
+              <Chips options={COLORS} value={pred.color} onChange={(v) => change('pred', { color: v })} disabled={locked} />
             </Crit>
             <Crit title="Millésime">
               <div className="row">
@@ -307,9 +324,6 @@ export default function SheetPage({ code, number }) {
                   Non millésimé
                 </button>
               </div>
-            </Crit>
-            <Crit title="Gamme de prix">
-              <Chips options={PRICE_RANGES} value={pred.price_range} onChange={(v) => change('pred', { price_range: v })} disabled={locked} />
             </Crit>
           </div>
         )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, usePolling, Band, Notice, Capsule, Chips, Loading, fmtDate } from './ui';
 import BottleForm from './BottleForm';
@@ -15,7 +15,6 @@ const TABS = [
   ['accueil', 'Soirée'],
   ['participants', 'Participants'],
   ['bouteilles', 'Bouteilles'],
-  ['service', 'Ordre'],
   ['suivi', 'Suivi'],
   ['revelation', 'Révélation'],
 ];
@@ -104,7 +103,6 @@ export default function AdminApp({ code }) {
           {tab === 'accueil' && <TabHome {...ctx} />}
           {tab === 'participants' && <TabParticipants {...ctx} />}
           {tab === 'bouteilles' && <TabBottles {...ctx} />}
-          {tab === 'service' && <TabOrder {...ctx} />}
           {tab === 'suivi' && <TabProgress {...ctx} />}
           {tab === 'revelation' && <TabReveal {...ctx} />}
         </div>
@@ -159,7 +157,6 @@ function TabHome({ data, act, busy, code, setTab }) {
     { done: participants.length > 0, text: `${participants.length} participant${participants.length > 1 ? 's' : ''} inscrit${participants.length > 1 ? 's' : ''}`, tab: 'participants' },
     { done: bottles.length > 0, text: `${bottles.length} bouteille${bottles.length > 1 ? 's' : ''} enregistrée${bottles.length > 1 ? 's' : ''} par les participants${without ? ` (${without} sans bouteille)` : ''}`, tab: 'bouteilles' },
     { done: numbered, text: numbered ? 'Numéros anonymes tirés au sort' : 'Numéros anonymes à tirer au sort', tab: 'bouteilles' },
-    { done: bottles.length > 0 && bottles.every((b) => b.serve_order), text: 'Ordre de service défini', tab: 'service' },
   ];
 
   return (
@@ -209,7 +206,7 @@ function TabHome({ data, act, busy, code, setTab }) {
       {tasting.phase === 'degustation' && (
         <div className="panel stack">
           <h2>Dégustation en cours</h2>
-          <p>Les participants voient les numéros des vins et remplissent leurs fiches. Suivez leur avancement dans l’onglet Suivi.</p>
+          <p>Les participants voient les vins par numéro. Servez-les dans l’ordre que vous choisissez en direct : chacun ouvre simplement le numéro qu’il a dans son verre. Suivez l’avancement dans l’onglet Suivi.</p>
           <div className="row">
             <button className="btn" onClick={() => setTab('suivi')}>
               Voir le suivi
@@ -323,7 +320,7 @@ function TabParticipants({ data, act, busy }) {
 
 // ---------------------------------------------------------------
 function bottleLine(b) {
-  return [b.color, b.appellation, b.vintage, b.grapes].filter(Boolean).join(', ');
+  return [b.appellation, b.grapes, b.region, b.country, b.color, b.vintage].filter(Boolean).join(', ');
 }
 
 function TabBottles({ data, act, busy }) {
@@ -407,7 +404,7 @@ function TabBottles({ data, act, busy }) {
               <div key={b.id} className="item">
                 <Capsule n={b.number} size="sm" />
                 <div className="grow">
-                  <div className="name">{[b.producer, b.wine_name].filter(Boolean).join(', ')}</div>
+                  <div className="name">{[b.producer, b.wine_name !== b.producer ? b.wine_name : null].filter(Boolean).join(', ')}</div>
                   <div className="small muted">{bottleLine(b)}</div>
                   <div className="tiny">{ownerName(b.owner_id) ? `Apportée par ${ownerName(b.owner_id)}` : ''}</div>
                 </div>
@@ -426,64 +423,9 @@ function TabBottles({ data, act, busy }) {
 }
 
 // ---------------------------------------------------------------
-function TabOrder({ data, act, busy }) {
-  const { bottles, tasting } = data;
-  const ordered = useMemo(
-    () => [...bottles].sort((a, b) => (a.serve_order ?? 999) - (b.serve_order ?? 999) || (a.number ?? 999) - (b.number ?? 999)),
-    [bottles]
-  );
-  const locked = tasting.phase === 'revelee';
-
-  function move(i, dir) {
-    const ids = ordered.map((b) => b.id);
-    const j = i + dir;
-    if (j < 0 || j >= ids.length) return;
-    [ids[i], ids[j]] = [ids[j], ids[i]];
-    act('setOrder', { ids });
-  }
-
-  return (
-    <>
-      <div className="panel stack">
-        <h2>Ordre de service</h2>
-        <p className="small muted">
-          Les participants verront les vins dans cet ordre. L’ordre conseillé (bulles, blancs, rosés, rouges, puis vins doux) est calculé par le site à partir des couleurs saisies par les propriétaires, sans vous les montrer.
-        </p>
-        <button className="btn gold" disabled={busy || locked || !bottles.length} onClick={() => act('autoOrder', {}, 'Ordre conseillé appliqué.')}>
-          Appliquer l’ordre conseillé
-        </button>
-      </div>
-      <div className="panel flush">
-        {ordered.length === 0 && <div className="item muted">Ajoutez d’abord des bouteilles.</div>}
-        {ordered.map((b, i) => (
-          <div key={b.id} className="item" style={{ alignItems: 'center' }}>
-            <div className="rank" style={{ fontSize: '1.2rem' }}>
-              {i + 1}
-            </div>
-            <Capsule n={b.number} size="sm" />
-            <div className="grow">
-              <div className="name">Vin n°{b.number ?? '?'}</div>
-              {b.wine_name && <div className="small muted">{b.wine_name}</div>}
-            </div>
-            <div className="row" style={{ gap: 6 }}>
-              <button className="btn ghost sm" aria-label="Monter" disabled={busy || locked || i === 0} onClick={() => move(i, -1)}>
-                ↑
-              </button>
-              <button className="btn ghost sm" aria-label="Descendre" disabled={busy || locked || i === ordered.length - 1} onClick={() => move(i, 1)}>
-                ↓
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
-// ---------------------------------------------------------------
 function TabProgress({ data }) {
   const { participants, bottles, progress } = data;
-  const ordered = [...bottles].sort((a, b) => (a.serve_order ?? 999) - (b.serve_order ?? 999));
+  const ordered = [...bottles].sort((a, b) => (a.number ?? 999) - (b.number ?? 999));
   const has = (list, p, b) => list.some(([pp, bb]) => pp === p && bb === b);
   const totalCells = participants.length * bottles.length || 1;
   const notes = progress.ratings.length;

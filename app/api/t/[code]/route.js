@@ -28,7 +28,7 @@ export const GET = route(async (_req, { code }) => {
   }
   if (me && tasting.phase !== 'preparation') {
     bottles = unwrap(
-      await db().from('bottles').select('id, number, serve_order').eq('tasting_id', tasting.id).order('serve_order')
+      await db().from('bottles').select('id, number, serve_order').eq('tasting_id', tasting.id).order('number')
     );
     const [ratings, predictions] = await Promise.all([
       db().from('ratings').select('*').eq('participant_id', me.id),

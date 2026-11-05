@@ -57,6 +57,7 @@ create table if not exists public.bottles (
   color       text,                                 -- rouge, blanc, rosé, effervescent, doux
   grapes      text,                                 -- cépage(s)
   region      text,
+  country     text,                                 -- pays
   appellation text,
   vintage     int,                                  -- millésime (vide = non millésimé)
   price_range text,
@@ -95,12 +96,17 @@ create table if not exists public.predictions (
   color          text,
   grapes         text,
   region         text,
+  country        text,
   appellation    text,
   vintage        int,
   price_range    text,
   updated_at     timestamptz not null default now(),
   unique (participant_id, bottle_id)
 );
+
+-- Colonnes ajoutées dans la version 2 (sans effet si elles existent déjà).
+alter table public.bottles     add column if not exists country text;
+alter table public.predictions add column if not exists country text;
 
 create index if not exists participants_tasting_idx on public.participants(tasting_id);
 create index if not exists bottles_tasting_idx      on public.bottles(tasting_id);
@@ -140,5 +146,8 @@ grant all on table public.tastings, public.participants, public.bottles,
   to service_role;
 
 revoke execute on function public.block_predictions_after_reveal() from public, anon, authenticated;
+
+-- Recharge la liste des colonnes côté API.
+notify pgrst, 'reload schema';
 
 -- Fin. Si "Success. No rows returned" s'affiche, tout est en place.

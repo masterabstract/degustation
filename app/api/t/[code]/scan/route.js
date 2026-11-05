@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { HttpError } from '@/lib/db';
 import { route, json, body } from '@/lib/http';
 import { requireParticipant } from '@/lib/auth';
-import { COLORS, REGIONS, PRICE_RANGES } from '@/lib/constants';
+import { COLORS, COUNTRIES } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -18,26 +18,24 @@ const TOOL = {
     type: 'object',
     properties: {
       lisible: { type: 'boolean', description: 'false si la photo ne montre pas une étiquette de vin lisible' },
-      wine_name: { type: ['string', 'null'], description: 'Nom de la cuvée ou du vin. Si aucune cuvée, reprendre l’appellation.' },
       producer: { type: ['string', 'null'], description: 'Domaine, château, maison ou producteur.' },
-      color: { type: ['string', 'null'], enum: [...COLORS, null] },
-      grapes: { type: ['string', 'null'], description: 'Cépage(s), séparés par des virgules.' },
-      region: { type: ['string', 'null'], enum: [...REGIONS, null] },
       appellation: { type: ['string', 'null'] },
+      grapes: { type: ['string', 'null'], description: 'Cépage(s), séparés par des virgules.' },
+      region: { type: ['string', 'null'], description: 'Région viticole, par exemple Bourgogne, Vallée du Rhône, Toscane.' },
+      country: { type: ['string', 'null'], enum: [...COUNTRIES, null] },
+      color: { type: ['string', 'null'], enum: [...COLORS, null] },
+      wine_name: { type: ['string', 'null'], description: 'Nom de la cuvée s’il y en a une, sinon null.' },
       vintage: { type: ['integer', 'null'], description: 'Millésime, null si non millésimé ou illisible.' },
-      price_range: { type: ['string', 'null'], enum: [...PRICE_RANGES, null], description: 'Estimation du prix de vente habituel en France.' },
       remarque: { type: ['string', 'null'], description: 'Une phrase courte en français sur ce qui reste incertain, ou null.' },
     },
-    required: ['lisible', 'wine_name', 'producer', 'color', 'grapes', 'region', 'appellation', 'vintage', 'price_range', 'remarque'],
+    required: ['lisible', 'producer', 'appellation', 'grapes', 'region', 'country', 'color', 'wine_name', 'vintage', 'remarque'],
   },
 };
 
 const PROMPT = `Voici la photo d'une bouteille de vin (étiquette ou contre-étiquette).
 Remplis la fiche avec l'outil fiche_bouteille, en français.
-- Recopie fidèlement ce qui est écrit : producteur, cuvée, appellation, millésime.
-- Couleur et cépages : s'ils ne sont pas écrits, déduis-les uniquement quand c'est certain (par exemple Chablis donne Chardonnay, Sancerre rouge donne Pinot Noir). Sinon laisse null.
-- Région : choisis dans la liste proposée celle qui correspond à l'appellation.
-- Gamme de prix : estime le prix de vente habituel en France de cette bouteille si tu le connais, sinon null.
+- Recopie fidèlement ce qui est écrit : domaine, appellation, cuvée, millésime.
+- Cépages, région, pays et couleur : s'ils ne sont pas écrits, déduis-les uniquement quand c'est certain (par exemple Chablis donne Chardonnay, Bourgogne, France, Blanc). Sinon laisse null.
 - N'invente rien. Si la photo n'est pas une étiquette de vin lisible, mets lisible à false.`;
 
 export const POST = route(async (req, { code }) => {
@@ -79,14 +77,14 @@ export const POST = route(async (req, { code }) => {
   const pick = (v, list) => (list.includes(v) ? v : null);
   return json({
     bottle: {
-      wine_name: out.wine_name || out.appellation || '',
       producer: out.producer || '',
-      color: pick(out.color, COLORS),
-      grapes: out.grapes || '',
-      region: pick(out.region, REGIONS) || '',
       appellation: out.appellation || '',
+      grapes: out.grapes || '',
+      region: out.region || '',
+      country: pick(out.country, COUNTRIES),
+      color: pick(out.color, COLORS),
+      wine_name: out.wine_name || '',
       vintage: Number.isInteger(out.vintage) ? out.vintage : '',
-      price_range: pick(out.price_range, PRICE_RANGES),
     },
     remarque: out.remarque || null,
   });

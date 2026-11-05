@@ -2,9 +2,9 @@
 
 import { useRef, useState } from 'react';
 import { api, Chips, Notice, Spinner } from './ui';
-import { COLORS, REGIONS, PRICE_RANGES, GRAPES } from '@/lib/constants';
+import { COLORS, COUNTRIES, REGIONS, GRAPES } from '@/lib/constants';
 
-const EMPTY = { wine_name: '', producer: '', color: null, grapes: '', region: '', appellation: '', vintage: '', price_range: null, notes: '' };
+const EMPTY = { producer: '', appellation: '', grapes: '', region: '', country: 'France', color: null, wine_name: '', vintage: '', notes: '' };
 
 // Réduit la photo sur le téléphone avant l'envoi (plus rapide, moins de données).
 async function shrink(file, max = 1568) {
@@ -79,19 +79,13 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
         </div>
       )}
       <label className="field">
-        <span>Nom du vin ou de la cuvée *</span>
-        <input className="input" value={b.wine_name} onChange={set('wine_name')} required maxLength={120} />
+        <span>Domaine, château ou maison *</span>
+        <input className="input" value={b.producer} onChange={set('producer')} required maxLength={120} placeholder="Ex : Domaine Ogier" />
       </label>
       <label className="field">
-        <span>Domaine, château ou maison</span>
-        <input className="input" value={b.producer} onChange={set('producer')} maxLength={120} />
+        <span>Appellation</span>
+        <input className="input" value={b.appellation} onChange={set('appellation')} placeholder="Ex : Crozes-Hermitage" maxLength={120} />
       </label>
-      <div className="field">
-        <span className="chip-group-label" style={{ fontWeight: 600, color: 'var(--encre)', fontSize: '0.9rem' }}>
-          Couleur
-        </span>
-        <Chips options={COLORS} value={b.color} onChange={set('color')} />
-      </div>
       <label className="field">
         <span>Cépage(s)</span>
         <input className="input" list="grapes-list" value={b.grapes} onChange={set('grapes')} placeholder="Ex : Syrah, Grenache" maxLength={160} />
@@ -99,39 +93,53 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
       <div className="grid2 collapse">
         <label className="field">
           <span>Région</span>
-          <select className="input" value={b.region} onChange={set('region')}>
+          <input className="input" list="regions-list" value={b.region} onChange={set('region')} placeholder="Ex : Vallée du Rhône" maxLength={80} />
+        </label>
+        <label className="field">
+          <span>Pays</span>
+          <select className="input" value={b.country || ''} onChange={set('country')}>
             <option value="">Choisir</option>
-            {REGIONS.map((r) => (
-              <option key={r}>{r}</option>
+            {COUNTRIES.map((c) => (
+              <option key={c}>{c}</option>
             ))}
           </select>
         </label>
-        <label className="field">
-          <span>Millésime</span>
-          <input className="input" type="number" inputMode="numeric" min="1900" max="2100" value={b.vintage} onChange={set('vintage')} placeholder="Vide si non millésimé" />
-        </label>
       </div>
-      <label className="field">
-        <span>Appellation</span>
-        <input className="input" value={b.appellation} onChange={set('appellation')} placeholder="Ex : Crozes-Hermitage" maxLength={120} />
-      </label>
       <div className="field">
         <span className="chip-group-label" style={{ fontWeight: 600, color: 'var(--encre)', fontSize: '0.9rem' }}>
-          Gamme de prix
+          Couleur
         </span>
-        <Chips options={PRICE_RANGES} value={b.price_range} onChange={set('price_range')} />
+        <Chips options={COLORS} value={b.color} onChange={set('color')} />
       </div>
-      <label className="field">
-        <span>Petit mot pour la révélation (facultatif)</span>
-        <input className="input" value={b.notes} onChange={set('notes')} placeholder="Ex : rapporté de mes vacances" maxLength={400} />
-      </label>
+      <details>
+        <summary className="small">Cuvée, millésime, petit mot (facultatif)</summary>
+        <div className="stack" style={{ marginTop: 12 }}>
+          <label className="field">
+            <span>Nom de la cuvée</span>
+            <input className="input" value={b.wine_name} onChange={set('wine_name')} placeholder="Ex : Les Gamins" maxLength={120} />
+          </label>
+          <label className="field">
+            <span>Millésime</span>
+            <input className="input" type="number" inputMode="numeric" min="1900" max="2100" value={b.vintage} onChange={set('vintage')} placeholder="Vide si non millésimé" />
+          </label>
+          <label className="field">
+            <span>Petit mot pour la révélation</span>
+            <input className="input" value={b.notes} onChange={set('notes')} placeholder="Ex : rapporté de mes vacances" maxLength={400} />
+          </label>
+        </div>
+      </details>
+      <datalist id="regions-list">
+        {REGIONS.map((r) => (
+          <option key={r} value={r} />
+        ))}
+      </datalist>
       <datalist id="grapes-list">
         {GRAPES.map((g) => (
           <option key={g} value={g} />
         ))}
       </datalist>
       <div className="row">
-        <button className="btn" disabled={busy || !b.wine_name.trim()}>
+        <button className="btn" disabled={busy || !b.producer.trim()}>
           {initial?.id ? 'Enregistrer les modifications' : 'Enregistrer la bouteille'}
         </button>
         {onCancel && (
@@ -149,5 +157,7 @@ function clean(x) {
   const o = {};
   for (const k of Object.keys(EMPTY)) o[k] = x[k] ?? EMPTY[k];
   o.vintage = x.vintage ?? '';
+  if (o.wine_name === o.producer) o.wine_name = ''; // pas de cuvée distincte
+  if (x.id && !x.country) o.country = '';
   return o;
 }

@@ -191,7 +191,7 @@ ANTHROPIC_API_KEY (facultatif) :</div>
     <li>Dans Vercel, ajoutez la variable <code>ANTHROPIC_API_KEY</code> avec cette clé (<span class="btn">Settings</span> &gt; <span class="btn">Environment Variables</span>), puis <span class="btn">Redeploy</span>.</li>
   </ol>
   <div class="box warn">Comme la clé Supabase, cette clé est secrète : elle ne doit être saisie que dans Vercel.</div>
-  <div class="box tip">Conseils pour la photo : étiquette de face, bien éclairée, qui remplit l’écran. Vérifiez toujours le résultat, surtout le prix, qui est une estimation de l’IA.</div>
+  <div class="box tip">Conseils pour la photo : étiquette de face, bien éclairée, qui remplit l’écran. Vérifiez toujours le résultat avant d’enregistrer.</div>
 </section>
 
 <section>
@@ -225,15 +225,15 @@ ANTHROPIC_API_KEY (facultatif) :</div>
   </ol>
   <h3>Les bouteilles</h3>
   <ol>
-    <li>Chaque invité ouvre le lien, touche son prénom, puis <span class="btn">Ajouter ma bouteille</span> (à la main ou en photo).</li>
+    <li>Chaque invité ouvre le lien, touche son prénom, puis <span class="btn">Ajouter ma bouteille</span>. Il renseigne, dans cet ordre : domaine, château ou maison (obligatoire), appellation, cépage, région, pays, couleur. La cuvée, le millésime et un petit mot sont facultatifs.</li>
     <li>Dans votre onglet <strong>Bouteilles</strong>, vous voyez seulement combien de bouteilles chacun a enregistrées. Un « Aucune » en rouge signale quelqu’un qui n’a pas encore saisi la sienne.</li>
     <li>Quand tout le monde a fini : <span class="btn">Tirer les numéros au sort</span>. Sur son téléphone, chaque invité lit alors « Masquez la bouteille et écrivez dessus : n°7 ». Il masque sa bouteille (chaussette, papier aluminium), y écrit son numéro, et la pose avec les autres.</li>
-    <li>Onglet <strong>Ordre</strong> : <span class="btn">Appliquer l’ordre conseillé</span>. Le site range les vins (bulles, blancs, rosés, rouges, doux) d’après les couleurs saisies par les invités, sans vous les montrer. Servez dans cet ordre.</li>
     <li>Une bouteille arrive en retard ? Son propriétaire l’ajoute, puis vous cliquez sur <span class="btn">Numéroter les nouvelles</span> : les numéros déjà écrits ne changent pas.</li>
   </ol>
   <h3>Pendant la dégustation</h3>
   <ol>
-    <li><span class="btn">Lancer la dégustation</span> : les vins apparaissent sur tous les téléphones en quelques secondes. L’ajout de bouteilles se ferme.</li>
+    <li><span class="btn">Lancer la dégustation</span> : les vins apparaissent sur tous les téléphones en quelques secondes, classés par numéro. L’ajout de bouteilles se ferme.</li>
+    <li>Vous choisissez l’ordre de service <strong>en direct</strong>, au fil de la soirée. Annoncez simplement le numéro servi : chacun ouvre ce numéro sur son téléphone.</li>
     <li>Chacun voit « votre bouteille » à côté de la sienne. Il peut la noter pour le plaisir, mais sa note et ses pronostics sur ce vin ne comptent pas.</li>
     <li>Suivez l’avancement dans l’onglet <strong>Suivi</strong>. Quelqu’un a changé de téléphone ? Onglet Participants, <span class="btn">Libérer</span> à côté de son nom : il pourra se reconnecter et retrouvera ses notes et ses bouteilles.</li>
   </ol>
@@ -244,7 +244,7 @@ ANTHROPIC_API_KEY (facultatif) :</div>
     <li>Chacun voit sur son téléphone : le classement des vins (avec qui les a apportés et leur petit mot), le classement des dégustateurs, les commentaires et le résumé de la soirée, à copier pour WhatsApp.</li>
     <li>Après la révélation, vous voyez enfin les bouteilles dans l’onglet Bouteilles, et pouvez corriger une faute de frappe : les classements se recalculent. Téléchargez alors la sauvegarde finale, complète.</li>
   </ol>
-  <div class="box tip"><strong>Règles de calcul</strong> : la note d’un vin est la moyenne des notes sur 20, sans celle de la personne qui l’a apporté. Les pronostics rapportent jusqu’à 17 points par vin (couleur 2, cépage 3, région 3, appellation 4, millésime 3 / 2 / 1 selon l’écart, prix 2 / 1). Personne ne marque de points sur sa propre bouteille. Les majuscules et les accents sont ignorés pour le cépage et l’appellation.</div>
+  <div class="box tip"><strong>Règles de calcul</strong> : la note d’un vin est la moyenne des notes sur 20, sans celle de la personne qui l’a apporté. Les pronostics rapportent jusqu’à 17 points par vin : appellation 4, cépage 3, région 3, pays 2, couleur 2, millésime 3, 2 ou 1 selon l’écart. Personne ne marque de points sur sa propre bouteille. Les majuscules et les accents sont ignorés pour l’appellation, le cépage et la région.</div>
 </section>
 
 <section>
@@ -255,6 +255,17 @@ ANTHROPIC_API_KEY (facultatif) :</div>
     <li>Faites-le au moins <strong>juste avant la révélation</strong> et <strong>juste après</strong>.</li>
   </ul>
   <div class="box tip">Un projet Supabase gratuit se met en veille après une semaine sans activité. Il suffit alors d’ouvrir le projet sur supabase.com et de cliquer sur <span class="btn">Restore project</span> : les données sont conservées. Pour ce week-end, aucun risque si vous faites la répétition dans la semaine.</div>
+</section>
+
+<section>
+  <h2>Mettre à jour un site déjà en ligne</h2>
+  <p>Quand je vous envoie une nouvelle version :</p>
+  <ol>
+    <li>Si l’archive contient un fichier <code>supabase/mise-a-jour-v2.sql</code> (ou un numéro plus récent) que vous n’avez pas encore lancé : ouvrez-le dans le Bloc-notes, copiez tout, collez-le dans Supabase &gt; <span class="btn">SQL Editor</span>, puis <span class="btn">Run</span>.</li>
+    <li>Décompressez la nouvelle archive. Sur GitHub, dans votre dépôt : <span class="btn">Add file</span> &gt; <span class="btn">Upload files</span>.</li>
+    <li>Sélectionnez <strong>tout le contenu</strong> du dossier décompressé (<kbd>Ctrl</kbd> + <kbd>A</kbd>) et <strong>faites-le glisser</strong> dans la page (pas le lien « choose your files », qui oublie les dossiers). Les anciens fichiers sont remplacés.</li>
+    <li><span class="btn">Commit changes</span>. Vercel reconstruit le site tout seul en 1 à 2 minutes.</li>
+  </ol>
 </section>
 
 <section>

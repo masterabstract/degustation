@@ -1,7 +1,6 @@
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body, cleanText } from '@/lib/http';
 import { requireAdmin } from '@/lib/auth';
-import { SERVE_ORDER_BY_COLOR } from '@/lib/constants';
 import { bottleFields, SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
 
 export const dynamic = 'force-dynamic';
@@ -122,41 +121,16 @@ export const POST = route(async (req, { code }) => {
       break;
     }
 
-    // ----- Ordre de service -----
-    case 'setOrder': {
-      if (revealed) throw new HttpError(400, 'Impossible après la révélation.');
-      const ids = Array.isArray(b.ids) ? b.ids : [];
-      for (let i = 0; i < ids.length; i++) {
-        unwrap(await one(db().from('bottles').update({ serve_order: i + 1 }).eq('id', ids[i])));
-      }
-      break;
-    }
-    case 'autoOrder': {
-      if (revealed) throw new HttpError(400, 'Impossible après la révélation.');
-      const bottles = unwrap(await one(db().from('bottles').select('id, color, number, serve_order')));
-      const sorted = [...bottles].sort(
-        (a, c) =>
-          (SERVE_ORDER_BY_COLOR[a.color] ?? 3) - (SERVE_ORDER_BY_COLOR[c.color] ?? 3) ||
-          (a.serve_order ?? 999) - (c.serve_order ?? 999) ||
-          (a.number ?? 999) - (c.number ?? 999)
-      );
-      for (let i = 0; i < sorted.length; i++) {
-        unwrap(await one(db().from('bottles').update({ serve_order: i + 1 }).eq('id', sorted[i].id)));
-      }
-      break;
-    }
-
     // ----- Déroulé -----
     case 'start': {
       if (!prep) throw new HttpError(400, 'La dégustation a déjà commencé.');
       const bottles = unwrap(await one(db().from('bottles').select('id, number, serve_order')));
       if (!bottles.length) throw new HttpError(400, 'Ajoutez au moins une bouteille.');
       if (bottles.some((x) => !x.number)) throw new HttpError(400, 'Toutes les bouteilles doivent avoir un numéro anonyme : tirez les numéros au sort.');
-      if (bottles.some((x) => !x.serve_order)) {
-        const sorted = [...bottles].sort((a, c) => (a.serve_order ?? 999) - (c.serve_order ?? 999) || a.number - c.number);
-        for (let i = 0; i < sorted.length; i++) {
-          unwrap(await one(db().from('bottles').update({ serve_order: i + 1 }).eq('id', sorted[i].id)));
-        }
+      // L'ordre de service se décide en direct pendant la soirée :
+      // les vins sont simplement présentés par numéro.
+      for (const x of bottles) {
+        if (x.serve_order !== x.number) unwrap(await one(db().from('bottles').update({ serve_order: x.number }).eq('id', x.id)));
       }
       unwrap(await db().from('tastings').update({ phase: 'degustation' }).eq('id', T));
       break;

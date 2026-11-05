@@ -1,7 +1,7 @@
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body, cleanText } from '@/lib/http';
 import { requireParticipant } from '@/lib/auth';
-import { ALL_ROBES, AROMES, SCALES, COLORS, REGIONS, PRICE_RANGES } from '@/lib/constants';
+import { ALL_ROBES, AROMES, SCALES, COLORS, COUNTRIES } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,12 +28,12 @@ function cleanPrediction(p) {
   let vintage = p.vintage === null || p.vintage === undefined || p.vintage === '' ? null : parseInt(p.vintage, 10);
   if (vintage !== null && (Number.isNaN(vintage) || (vintage !== 0 && (vintage < 1900 || vintage > 2100)))) vintage = null;
   return {
-    color: COLORS.includes(p.color) ? p.color : null,
-    grapes: cleanText(p.grapes, 120),
-    region: REGIONS.includes(p.region) ? p.region : null,
     appellation: cleanText(p.appellation, 120),
+    grapes: cleanText(p.grapes, 120),
+    region: cleanText(p.region, 80),
+    country: COUNTRIES.includes(p.country) ? p.country : null,
+    color: COLORS.includes(p.color) ? p.color : null,
     vintage,
-    price_range: PRICE_RANGES.includes(p.price_range) ? p.price_range : null,
   };
 }
 
