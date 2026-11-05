@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, usePolling, Band, Notice, Capsule, Chips, Loading, fmtDate } from './ui';
 import BottleForm from './BottleForm';
+import QrCode from './QrCode';
 
 const PHASE_LABEL = {
   preparation: 'En préparation',
   degustation: 'Dégustation en cours',
+  revelation: 'Révélation en cours',
   revelee: 'Bouteilles révélées',
 };
 
@@ -148,6 +150,7 @@ function AdminLogin({ code, error: initialError, onDone }) {
 function TabHome({ data, act, busy, code, setTab }) {
   const { tasting, participants, bottles } = data;
   const [copied, setCopied] = useState(false);
+  const [bigQr, setBigQr] = useState(false);
   const joinUrl = typeof window !== 'undefined' ? `${window.location.origin}/t/${code}` : '';
   const numbered = bottles.length > 0 && bottles.every((b) => b.number);
   const connected = participants.filter((p) => p.connected).length;
@@ -162,7 +165,12 @@ function TabHome({ data, act, busy, code, setTab }) {
   return (
     <>
       <div className="panel center stack">
-        <div className="muted">Code d’accès des participants</div>
+        <div className="muted">Scannez pour rejoindre la soirée</div>
+        {joinUrl && <QrCode text={joinUrl} size={200} />}
+        <button className="btn gold" onClick={() => setBigQr(true)}>
+          Afficher en grand
+        </button>
+        <div className="muted">ou tapez le code</div>
         <div className="access-code">{tasting.code}</div>
         <div className="small muted">
           ou le lien direct : <strong>{joinUrl.replace(/^https?:\/\//, '')}</strong>
@@ -183,6 +191,18 @@ function TabHome({ data, act, busy, code, setTab }) {
           {connected} / {participants.length} participants connectés sur leur téléphone
         </div>
       </div>
+
+      {bigQr && (
+        <div className="overlay" role="dialog" aria-label="QR code en grand" onClick={() => setBigQr(false)}>
+          <h2>{tasting.name}</h2>
+          <div style={{ background: 'var(--papier)', padding: 12, borderRadius: 16 }}>
+            <QrCode text={joinUrl} size={Math.min(320, typeof window !== 'undefined' ? window.innerWidth - 80 : 320)} />
+          </div>
+          <div>Scannez avec l’appareil photo de votre téléphone</div>
+          <div className="access-code">{tasting.code}</div>
+          <button className="btn gold">Fermer</button>
+        </div>
+      )}
 
       {tasting.phase === 'preparation' && (
         <div className="panel stack">
@@ -205,8 +225,11 @@ function TabHome({ data, act, busy, code, setTab }) {
 
       {tasting.phase === 'degustation' && (
         <div className="panel stack">
-          <h2>Dégustation en cours</h2>
-          <p>Les participants voient les vins par numéro. Servez-les dans l’ordre que vous choisissez en direct : chacun ouvre simplement le numéro qu’il a dans son verre. Suivez l’avancement dans l’onglet Suivi.</p>
+          <h2>Vin en cours de service</h2>
+          <p className="small muted">
+            Touchez le numéro que vous servez : il passe en tête de liste et s’affiche « en cours » sur tous les téléphones.
+          </p>
+          <ServePicker data={data} act={act} busy={busy} />
           <div className="row">
             <button className="btn" onClick={() => setTab('suivi')}>
               Voir le suivi
@@ -215,6 +238,15 @@ function TabHome({ data, act, busy, code, setTab }) {
               Repasser en préparation
             </button>
           </div>
+        </div>
+      )}
+
+      {tasting.phase === 'revelation' && (
+        <div className="panel stack">
+          <h2>Révélation en cours</h2>
+          <button className="btn gold block" onClick={() => setTab('revelation')}>
+            Continuer la révélation
+          </button>
         </div>
       )}
 
@@ -498,14 +530,47 @@ function TabProgress({ data }) {
 }
 
 // ---------------------------------------------------------------
+function ServePicker({ data, act, busy }) {
+  const { tasting, bottles } = data;
+  const served = new Set(tasting.served_numbers || []);
+  const numbers = bottles.map((b) => b.number).filter(Boolean).sort((a, b) => a - b);
+  if (!numbers.length) return <p className="small muted">Aucune bouteille pour l’instant.</p>;
+  return (
+    <>
+      <div className="serve-grid">
+        {numbers.map((n) => (
+          <button
+            key={n}
+            type="button"
+            className={`serve-btn ${tasting.current_number === n ? 'current' : served.has(n) ? 'served' : ''}`}
+            disabled={busy}
+            aria-pressed={tasting.current_number === n}
+            aria-label={`Servir le vin n°${n}`}
+            onClick={() => act('serve', { number: n }, `On sert le n°${n}.`)}
+          >
+            <Capsule n={n} size="sm" />
+            {tasting.current_number === n ? <span className="tag">en cours</span> : served.has(n) ? <span className="tag" style={{ background: 'var(--trait-fort)' }}>servi</span> : null}
+          </button>
+        ))}
+      </div>
+      {tasting.current_number && (
+        <button className="linklike small" disabled={busy} onClick={() => act('serve', { number: null }, 'Plus de vin en cours.')}>
+          Aucun vin en cours (pause)
+        </button>
+      )}
+    </>
+  );
+}
+
 function TabReveal({ data, act, busy, code }) {
   const { tasting, participants, bottles, progress } = data;
-  const [armed, setArmed] = useState(false);
+  const [armed, setArmed] = useState(null);
+  const done = tasting.revealed_numbers || [];
 
   if (tasting.phase === 'revelee') {
     return (
       <div className="panel stack center">
-        <h2>Révélation effectuée</h2>
+        <h2>Révélation terminée</h2>
         <p>Les fiches et pronostics sont verrouillés. Chacun peut consulter les résultats sur son téléphone.</p>
         <Link className="btn gold block" href={`/t/${code}/resultats`}>
           Ouvrir les résultats
@@ -526,26 +591,92 @@ function TabReveal({ data, act, busy, code }) {
     );
   }
 
+  if (tasting.phase === 'revelation') {
+    const left = bottles.filter((b) => b.number && !done.includes(b.number)).sort((a, b) => a.number - b.number);
+    const shown = done.map((n) => bottles.find((b) => b.number === n)).filter(Boolean);
+    return (
+      <>
+        <div className="panel stack">
+          <h2>Révélation vin par vin</h2>
+          <p className="small">
+            {done.length} vin{done.length > 1 ? 's' : ''} révélé{done.length > 1 ? 's' : ''} sur {bottles.length}. Chaque révélation s’affiche sur tous les téléphones après un compte à rebours.
+          </p>
+          {left.length > 0 ? (
+            <>
+              <button className="btn gold block" disabled={busy} onClick={() => act('revealNext', {}, 'Vin révélé.')}>
+                Révéler le vin suivant
+              </button>
+              <p className="tiny muted center">Du moins bien noté au mieux noté : le meilleur vin est révélé en dernier.</p>
+              <details>
+                <summary className="small">Ou choisir le numéro à révéler</summary>
+                <div className="serve-grid" style={{ marginTop: 10 }}>
+                  {left.map((b) => (
+                    <button key={b.id} type="button" className="serve-btn" disabled={busy} aria-label={`Révéler le vin n°${b.number}`} onClick={() => act('revealNumber', { number: b.number }, `Vin n°${b.number} révélé.`)}>
+                      <Capsule n={b.number} size="sm" />
+                    </button>
+                  ))}
+                </div>
+              </details>
+            </>
+          ) : (
+            <Notice kind="ok">Tous les vins sont révélés. Place au podium !</Notice>
+          )}
+          <button className={`btn ${left.length ? 'ghost' : 'gold'} block`} disabled={busy} onClick={() => act('finishReveal', {}, 'Classements affichés.')}>
+            {left.length ? 'Tout révéler et afficher les classements' : 'Afficher les classements et le podium'}
+          </button>
+          <Link className="small center" href={`/t/${code}/resultats`}>
+            Ouvrir l’écran de révélation (à projeter sur une télévision)
+          </Link>
+        </div>
+        {shown.length > 0 && (
+          <div className="panel flush">
+            {[...shown].reverse().map((b) => (
+              <div key={b.id} className="item">
+                <Capsule n={b.number} size="sm" />
+                <div className="grow">
+                  <div className="name">{[b.producer, b.wine_name !== b.producer ? b.wine_name : null].filter(Boolean).join(', ')}</div>
+                  <div className="small muted">{bottleLine(b)}</div>
+                  {b.owner_name && <div className="tiny">Apportée par {b.owner_name}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Dégustation en cours : choisir le mode de révélation.
   return (
     <div className="panel stack">
       <h2>Révéler les bouteilles</h2>
       <p>
         {progress.ratings.length} notes et {progress.predictions.length} pronostics enregistrés pour {participants.length} participants et {bottles.length} vins.
       </p>
-      <p className="small muted">
-        La révélation est définitive : elle verrouille toutes les fiches et tous les pronostics, puis affiche les bouteilles et les classements à tout le monde.
-      </p>
+      <p className="small muted">Dès que la révélation commence, toutes les fiches et tous les pronostics sont verrouillés. C’est définitif.</p>
       {!armed ? (
-        <button className="btn gold block" onClick={() => setArmed(true)}>
-          Révéler les bouteilles
-        </button>
+        <>
+          <button className="btn gold block" onClick={() => setArmed('step')}>
+            Révéler vin par vin
+          </button>
+          <p className="tiny muted center">Recommandé : un compte à rebours sur chaque téléphone, du moins bien noté au meilleur, puis le podium.</p>
+          <button className="btn ghost block" onClick={() => setArmed('all')}>
+            Tout révéler d’un coup
+          </button>
+        </>
       ) : (
         <div className="stack">
           <Notice kind="info">Tout le monde a terminé ? Une fois confirmé, plus aucune modification n’est possible.</Notice>
-          <button className="btn danger block" disabled={busy} onClick={() => act('reveal', { confirm: true }, 'Révélation effectuée !')}>
-            Confirmer la révélation
-          </button>
-          <button className="btn ghost block" onClick={() => setArmed(false)}>
+          {armed === 'step' ? (
+            <button className="btn danger block" disabled={busy} onClick={async () => (await act('startReveal', { confirm: true }, 'La révélation commence !')) && setArmed(null)}>
+              Confirmer : commencer la révélation
+            </button>
+          ) : (
+            <button className="btn danger block" disabled={busy} onClick={() => act('reveal', { confirm: true }, 'Révélation effectuée !')}>
+              Confirmer la révélation
+            </button>
+          )}
+          <button className="btn ghost block" onClick={() => setArmed(null)}>
             Annuler
           </button>
         </div>

@@ -334,3 +334,38 @@ details[open] > summary::before { content: '− '; }
 .ac-label { font-weight: 600; color: var(--lie); }
 .ac-hint { font-size: 0.78rem; color: var(--taupe); white-space: nowrap; }
 .autofill-note { font-size: 0.8rem; color: var(--vert); margin-top: 6px; }
+
+/* ---------- QR code ---------- */
+.qr { margin: 0 auto; background: var(--papier); border-radius: 12px; padding: 8px; border: 1px solid var(--trait); }
+.qr svg { width: 100%; height: 100%; display: block; }
+.overlay {
+  position: fixed; inset: 0; z-index: 50; background: var(--lie); color: var(--creme);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 24px; text-align: center;
+}
+.overlay h2 { font-family: var(--serif); font-size: 2rem; margin: 0; color: var(--creme); }
+.overlay .access-code { color: var(--or-clair); }
+
+/* ---------- Vin en cours ---------- */
+.serve-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 10px; }
+.serve-btn { border: 0; background: none; padding: 4px; border-radius: 50%; cursor: pointer; position: relative; display: grid; place-items: center; touch-action: manipulation; }
+.serve-btn.served .capsule { opacity: 0.55; }
+.serve-btn.current .capsule { box-shadow: inset 0 0 0 2px var(--or), inset 0 0 0 5px var(--lie), inset 0 0 0 6px rgba(227, 204, 142, 0.55), 0 0 0 4px var(--or); opacity: 1; }
+.serve-btn .tag { position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; font-weight: 800; background: var(--or); color: var(--lie); padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
+.now-serving { border: 2px solid var(--or); background: linear-gradient(90deg, rgba(227, 204, 142, 0.45), var(--papier)); }
+.now-badge { display: inline-block; font-size: 0.75rem; font-weight: 800; color: var(--lie); background: var(--or-clair); padding: 2px 8px; border-radius: 999px; }
+.section-label { font-weight: 700; color: var(--taupe); font-size: 0.85rem; margin: 18px 0 8px; }
+.wine-row.later { opacity: 0.6; }
+
+/* ---------- Révélation vin par vin ---------- */
+.countdown { position: fixed; inset: 0; z-index: 60; background: rgba(74, 14, 30, 0.96); display: grid; place-items: center; color: var(--creme); text-align: center; }
+.countdown .num { font-family: var(--serif); font-size: 9rem; font-weight: 600; line-height: 1; color: var(--or-clair); animation: pulse 1s ease-in-out infinite; }
+.countdown .lbl { font-size: 1.1rem; margin-top: 12px; color: var(--creme); }
+@keyframes pulse { 0% { transform: scale(0.8); opacity: 0.4; } 40% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 0.9; } }
+.reveal-card { border: 2px solid var(--or); }
+.reveal-card.latest { animation: rise 0.8s ease-out both; box-shadow: 0 0 0 4px rgba(227, 204, 142, 0.5); }
+.podium { display: grid; grid-template-columns: 1fr 1.2fr 1fr; align-items: end; gap: 8px; text-align: center; }
+.podium .step { background: var(--lie); color: var(--creme); border-radius: 10px 10px 0 0; padding: 10px 6px; border-top: 3px solid var(--or); }
+.podium .step .who { font-family: var(--serif); font-size: 1.15rem; font-weight: 600; line-height: 1.1; }
+.podium .step .pts { font-size: 0.8rem; color: var(--or-clair); margin-top: 4px; }
+.podium .p1 { min-height: 130px; } .podium .p2 { min-height: 100px; } .podium .p3 { min-height: 80px; }
+.podium .medal { font-family: var(--serif); font-size: 1.8rem; color: var(--or-clair); }

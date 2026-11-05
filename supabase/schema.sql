@@ -26,10 +26,13 @@ create table if not exists public.tastings (
   name             text not null,                   -- nom de la soirée
   event_date       date,
   phase            text not null default 'preparation'
-                   check (phase in ('preparation', 'degustation', 'revelee')),
+                   check (phase in ('preparation', 'degustation', 'revelation', 'revelee')),
   admin_token_hash text not null,                   -- empreinte du lien organisateur
   numbers_drawn    boolean not null default false,  -- numéros anonymes tirés au sort ?
   revealed_at      timestamptz,
+  current_number   int,                             -- vin en cours de service
+  served_numbers   int[] not null default '{}',     -- vins déjà servis
+  revealed_numbers int[] not null default '{}',     -- vins déjà révélés (révélation vin par vin)
   created_at       timestamptz not null default now()
 );
 
@@ -104,7 +107,13 @@ create table if not exists public.predictions (
   unique (participant_id, bottle_id)
 );
 
--- Colonnes ajoutées dans la version 2 (sans effet si elles existent déjà).
+-- Colonnes ajoutées dans les versions 2 et 3 (sans effet si elles existent déjà).
+alter table public.tastings add column if not exists current_number   int;
+alter table public.tastings add column if not exists served_numbers   int[] not null default '{}';
+alter table public.tastings add column if not exists revealed_numbers int[] not null default '{}';
+alter table public.tastings drop constraint if exists tastings_phase_check;
+alter table public.tastings add constraint tastings_phase_check
+  check (phase in ('preparation', 'degustation', 'revelation', 'revelee'));
 alter table public.bottles     add column if not exists country text;
 alter table public.predictions add column if not exists country text;
 
@@ -118,8 +127,8 @@ create index if not exists predictions_tasting_idx  on public.predictions(tastin
 create or replace function public.block_predictions_after_reveal()
 returns trigger language plpgsql as $$
 begin
-  if (select phase from public.tastings where id = new.tasting_id) = 'revelee' then
-    raise exception 'Les pronostics sont verrouillés : la révélation a eu lieu.';
+  if (select phase from public.tastings where id = new.tasting_id) in ('revelation', 'revelee') then
+    raise exception 'Les pronostics sont verrouillés : la révélation a commencé.';
   end if;
   new.updated_at := now();
   return new;

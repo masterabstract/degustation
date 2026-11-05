@@ -2,6 +2,7 @@ import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body, cleanText } from '@/lib/http';
 import { requireAdmin } from '@/lib/auth';
 import { bottleFields, numberMissing, SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
+import { computeResults } from '@/lib/scoring';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,16 +11,25 @@ export const dynamic = 'force-dynamic';
 // Ni le contenu, ni le propriétaire d'une bouteille ne lui sont envoyés.
 async function loadState(tasting) {
   const revealed = tasting.phase === 'revelee';
+  const inReveal = tasting.phase === 'revelation';
   const [participants, bottles, ratings, predictions] = await Promise.all([
     db().from('participants').select('id, name, hors_concours, token_hash, joined_at').eq('tasting_id', tasting.id).order('created_at'),
-    db().from('bottles').select(`${PUBLIC_COLS}, owner_id${revealed ? `, ${SECRET_COLS}` : ''}`).eq('tasting_id', tasting.id),
+    db().from('bottles').select(`${PUBLIC_COLS}, owner_id, ${SECRET_COLS}`).eq('tasting_id', tasting.id),
     db().from('ratings').select('participant_id, bottle_id, note').eq('tasting_id', tasting.id),
     db().from('predictions').select('participant_id, bottle_id').eq('tasting_id', tasting.id),
   ]).then((rs) => rs.map((r) => unwrap(r)));
 
   const count = (pid) => bottles.filter((b) => b.owner_id === pid).length;
   const visibleBottles = bottles
-    .map((b) => (revealed ? b : { id: b.id, number: b.number, serve_order: b.serve_order }))
+    .map((b) => {
+      if (revealed) return b;
+      // Pendant la révélation vin par vin : seuls les vins déjà révélés sont détaillés.
+      if (inReveal && (tasting.revealed_numbers || []).includes(b.number)) {
+        const { owner_id, ...rest } = b;
+        return { ...rest, owner_name: participants.find((p) => p.id === owner_id)?.name || null };
+      }
+      return { id: b.id, number: b.number, serve_order: b.serve_order };
+    })
     .sort((a, b) => (a.number ?? 999) - (b.number ?? 999) || a.id.localeCompare(b.id));
 
   return {
@@ -30,6 +40,9 @@ async function loadState(tasting) {
       phase: tasting.phase,
       numbers_drawn: tasting.numbers_drawn,
       revealed_at: tasting.revealed_at,
+      current_number: tasting.current_number,
+      served_numbers: tasting.served_numbers || [],
+      revealed_numbers: tasting.revealed_numbers || [],
     },
     participants: participants.map(({ token_hash, ...p }) => ({ ...p, connected: !!token_hash, bottles: count(p.id) })),
     bottles: visibleBottles,
@@ -126,12 +139,62 @@ export const POST = route(async (req, { code }) => {
       unwrap(await db().from('tastings').update({ phase: 'degustation' }).eq('id', T));
       break;
     }
+    // ----- Vin en cours de service -----
+    case 'serve': {
+      if (tasting.phase !== 'degustation') throw new HttpError(400, 'La dégustation doit être en cours.');
+      const n = b.number === null || b.number === undefined ? null : parseInt(b.number, 10);
+      if (n !== null) {
+        const exists = unwrap(await one(db().from('bottles').select('id').eq('number', n)));
+        if (!exists.length) throw new HttpError(400, 'Ce numéro n’existe pas.');
+      }
+      const served = new Set(tasting.served_numbers || []);
+      if (n !== null) served.add(n);
+      unwrap(await db().from('tastings').update({ current_number: n, served_numbers: [...served].sort((a, c) => a - c) }).eq('id', T));
+      break;
+    }
+
+    // ----- Révélation vin par vin -----
+    case 'startReveal':
+      if (tasting.phase !== 'degustation') throw new HttpError(400, 'La dégustation doit être en cours.');
+      if (b.confirm !== true) throw new HttpError(400, 'Confirmation manquante.');
+      unwrap(await db().from('tastings').update({ phase: 'revelation', revealed_numbers: [], current_number: null }).eq('id', T));
+      break;
+    case 'revealNext':
+    case 'revealNumber': {
+      if (tasting.phase !== 'revelation') throw new HttpError(400, 'La révélation vin par vin n’a pas commencé.');
+      const done = new Set(tasting.revealed_numbers || []);
+      let n;
+      if (b.action === 'revealNumber') {
+        n = parseInt(b.number, 10);
+      } else {
+        // Du moins bien noté au mieux noté : le meilleur vin est révélé en dernier.
+        const q = (t, cols) => db().from(t).select(cols).eq('tasting_id', T);
+        const [ps, bs, rs] = (await Promise.all([q('participants', 'id, name, hors_concours'), q('bottles', 'id, owner_id, number, serve_order'), q('ratings', 'participant_id, bottle_id, note, aromes, commentaire')])).map((r) => unwrap(r));
+        const { wines } = computeResults({ tasting, participants: ps, bottles: bs, ratings: rs, predictions: [] });
+        const left = wines.filter((w) => w.number && !done.has(w.number));
+        left.sort((a, c) => (a.average ?? -1) - (c.average ?? -1) || c.number - a.number);
+        n = left[0]?.number;
+      }
+      if (!n) throw new HttpError(400, 'Tous les vins sont déjà révélés.');
+      const exists = unwrap(await one(db().from('bottles').select('id').eq('number', n)));
+      if (!exists.length) throw new HttpError(400, 'Ce numéro n’existe pas.');
+      done.add(n);
+      unwrap(await db().from('tastings').update({ revealed_numbers: [...done] }).eq('id', T));
+      break;
+    }
+    case 'finishReveal': {
+      if (tasting.phase !== 'revelation') throw new HttpError(400, 'La révélation vin par vin n’a pas commencé.');
+      const all = unwrap(await one(db().from('bottles').select('number'))).map((x) => x.number).filter(Boolean);
+      unwrap(await db().from('tastings').update({ phase: 'revelee', revealed_at: new Date().toISOString(), revealed_numbers: all }).eq('id', T)); 
+      break;
+    }
+
     case 'pause': // retour en préparation (avant la révélation uniquement)
-      if (revealed) throw new HttpError(400, 'La révélation est définitive.');
+      if (revealed || tasting.phase === 'revelation') throw new HttpError(400, 'La révélation est définitive.');
       unwrap(await db().from('tastings').update({ phase: 'preparation' }).eq('id', T));
       break;
-    case 'reveal':
-      if (tasting.phase !== 'degustation') throw new HttpError(400, 'La dégustation doit être en cours pour être révélée.');
+    case 'reveal': // tout révéler d'un coup
+      if (!['degustation', 'revelation'].includes(tasting.phase)) throw new HttpError(400, 'La dégustation doit être en cours pour être révélée.');
       if (b.confirm !== true) throw new HttpError(400, 'Confirmation manquante.');
       unwrap(await db().from('tastings').update({ phase: 'revelee', revealed_at: new Date().toISOString() }).eq('id', T));
       break;

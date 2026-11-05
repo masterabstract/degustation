@@ -41,7 +41,7 @@ function cleanPrediction(p) {
 export const PUT = route(async (req, { code }) => {
   const { tasting, me } = await requireParticipant(code);
   if (tasting.phase === 'preparation') throw new HttpError(403, 'La dégustation n’a pas encore commencé.');
-  if (tasting.phase === 'revelee') throw new HttpError(403, 'Les bouteilles sont révélées : les fiches et pronostics sont verrouillés.');
+  if (tasting.phase === 'revelee' || tasting.phase === 'revelation') throw new HttpError(403, 'La révélation a commencé : les fiches et pronostics sont verrouillés.');
 
   const b = await body(req);
   const bottle = unwrap(

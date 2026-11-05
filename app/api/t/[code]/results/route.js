@@ -10,7 +10,8 @@ export const GET = route(async (_req, { code }) => {
   const tasting = await getTasting(code);
   const me = await getParticipant(tasting);
   const admin = await isAdmin(tasting);
-  if (tasting.phase !== 'revelee') {
+  const live = tasting.phase === 'revelation';
+  if (tasting.phase !== 'revelee' && !live) {
     if (!me && !admin) throw new HttpError(401, 'Rejoignez la dégustation pour voir les résultats.');
     throw new HttpError(403, 'Les résultats seront visibles après la révélation.');
   }
@@ -28,8 +29,23 @@ export const GET = route(async (_req, { code }) => {
   ).map((r) => unwrap(r));
 
   const results = computeResults({ tasting, participants, bottles, ratings, predictions, meId: me?.id });
+
+  if (live) {
+    // Révélation vin par vin en cours : on n'envoie QUE les vins déjà révélés,
+    // dans l'ordre de leur révélation. Rien sur les autres, ni sur les dégustateurs.
+    const order = tasting.revealed_numbers || [];
+    const shown = order.map((n) => results.wines.find((w) => w.number === n)).filter(Boolean);
+    return json({
+      tasting: { code: tasting.code, name: tasting.name, event_date: tasting.event_date, phase: tasting.phase },
+      me: me ? { id: me.id, name: me.name } : null,
+      live: true,
+      total: bottles.length,
+      revealed: shown.map(({ comments, myNote, ...w }) => ({ ...w, myNote: w.myNote, comments })),
+    });
+  }
+
   return json({
-    tasting: { code: tasting.code, name: tasting.name, event_date: tasting.event_date, revealed_at: tasting.revealed_at },
+    tasting: { code: tasting.code, name: tasting.name, event_date: tasting.event_date, revealed_at: tasting.revealed_at, phase: tasting.phase },
     me: me ? { id: me.id, name: me.name } : null,
     ...results,
   });

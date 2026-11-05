@@ -68,9 +68,9 @@ export default function SheetPage({ code, number }) {
     const id = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       api(`/api/t/${code}`)
-        .then((d) => setState((s) => (s ? { ...s, tasting: d.tasting } : s)))
+        .then((d) => setState((s) => (s ? { ...s, tasting: d.tasting, bottles: d.bottles?.length ? d.bottles : s.bottles } : s)))
         .catch(() => {});
-    }, 6000);
+    }, 5000);
     return () => clearInterval(id);
   }, [code]);
 
@@ -186,13 +186,23 @@ export default function SheetPage({ code, number }) {
           </nav>
         </div>
 
-        {locked && state.tasting.phase === 'revelee' && (
+        {locked && (state.tasting.phase === 'revelee' || state.tasting.phase === 'revelation') && (
           <div className="panel stack center reveal-in" style={{ marginBottom: 12 }}>
-            <h2>Les bouteilles sont révélées</h2>
+            <h2>{state.tasting.phase === 'revelation' ? 'La révélation a commencé' : 'Les bouteilles sont révélées'}</h2>
             <p className="small muted">Cette fiche est verrouillée.</p>
             <Link href={`/t/${code}/resultats`} className="btn gold block">
-              Voir les résultats
+              {state.tasting.phase === 'revelation' ? 'Suivre la révélation' : 'Voir les résultats'}
             </Link>
+          </div>
+        )}
+        {!locked && state.tasting.current_number && state.tasting.current_number !== bottle.number && bottles.some((x) => x.number === state.tasting.current_number) && (
+          <div className="notice info row between" style={{ marginBottom: 12, flexWrap: 'nowrap' }}>
+            <span>
+              On sert maintenant le <strong>n°{state.tasting.current_number}</strong>
+            </span>
+            <button className="btn sm" onClick={() => go(`/t/${code}/vin/${state.tasting.current_number}`)}>
+              Y aller
+            </button>
           </div>
         )}
         {(state.myBottles || []).some((m) => m.id === bottle.id) && (

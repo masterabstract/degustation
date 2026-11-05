@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api, Band, Notice, Capsule, Loading, fmtNote } from './ui';
 import { ITEM_MAX, MAX_POINTS_PER_BOTTLE } from '@/lib/constants';
@@ -19,8 +19,33 @@ export default function ResultsPage({ code }) {
   const [error, setError] = useState(null);
   const [tab, setTab] = useState('vins');
 
+  const [justFinished, setJustFinished] = useState(false);
+
   useEffect(() => {
-    api(`/api/t/${code}/results`).then(setData).catch(setError);
+    let stop = false;
+    let timer;
+    const load = async () => {
+      try {
+        const d = await api(`/api/t/${code}/results`);
+        if (stop) return;
+        setData((prev) => {
+          if (prev?.live && !d.live) setJustFinished(true);
+          return d;
+        });
+        setError(null);
+        // Pendant la révélation vin par vin, on suit en direct.
+        if (d.live) timer = setTimeout(load, 3000);
+      } catch (e) {
+        if (stop) return;
+        setError(e);
+        if (e.status === 403) timer = setTimeout(load, 5000); // révélation pas encore commencée
+      }
+    };
+    load();
+    return () => {
+      stop = true;
+      clearTimeout(timer);
+    };
   }, [code]);
 
   if (error) {
@@ -34,11 +59,13 @@ export default function ResultsPage({ code }) {
     );
   }
   if (!data) return <Loading label="Calcul des résultats…" />;
+  if (data.live) return <LiveReveal data={data} code={code} />;
 
   return (
     <main>
       <Band title="Résultats" sub={data.tasting.name} back={data.me ? `/t/${code}` : '/archives'} />
       <div className="page">
+        <Podium data={data} animate={justFinished} />
         <div className="sticky-tabs">
           <nav className="tabs" role="tablist">
             {TABS.map(([id, label]) => (
@@ -195,6 +222,154 @@ function Summary({ data }) {
       <Link className="small center" href="/archives">
         Voir toutes les soirées et le palmarès
       </Link>
+    </div>
+  );
+}
+
+// ---------- Révélation vin par vin, en direct ----------
+function LiveReveal({ data, code }) {
+  const seen = useRef(null);
+  const [count, setCount] = useState(null); // compte à rebours en cours
+  const [shownCount, setShownCount] = useState(data.revealed.length);
+  const n = data.revealed.length;
+
+  useEffect(() => {
+    if (seen.current === null) {
+      seen.current = n; // à l'ouverture de la page : pas de compte à rebours pour les vins déjà révélés
+      setShownCount(n);
+      return;
+    }
+    if (n > seen.current) {
+      seen.current = n;
+      const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) {
+        setShownCount(n);
+        return;
+      }
+      setCount(3);
+      const t1 = setTimeout(() => setCount(2), 1000);
+      const t2 = setTimeout(() => setCount(1), 2000);
+      const t3 = setTimeout(() => {
+        setCount(null);
+        setShownCount(n);
+      }, 3000);
+      return () => [t1, t2, t3].forEach(clearTimeout);
+    }
+  }, [n]);
+
+  const visible = data.revealed.slice(0, shownCount);
+  const next = data.revealed[shownCount];
+  const remaining = data.total - shownCount;
+
+  return (
+    <main>
+      <Band title="Révélation" sub={data.tasting.name} back={data.me ? `/t/${code}` : '/archives'} />
+      <div className="page stack">
+        {count !== null && next && (
+          <div className="countdown" role="status" aria-live="assertive">
+            <div>
+              <div className="lbl">Révélation du vin n°{next.number}</div>
+              <div className="num" key={count}>
+                {count}
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="panel center">
+          <div className="row" style={{ justifyContent: 'center', gap: 6 }}>
+            {[...Array(data.total)].map((_, i) => (
+              <span key={i} className={`dot ${i < shownCount ? 'full' : ''}`} />
+            ))}
+          </div>
+          <p className="small muted" style={{ marginTop: 8 }}>
+            {shownCount} vin{shownCount > 1 ? 's' : ''} révélé{shownCount > 1 ? 's' : ''} sur {data.total}
+            {remaining > 0 ? ' · le meilleur sera révélé en dernier' : ' · le podium arrive !'}
+          </p>
+        </div>
+        {visible.length === 0 && (
+          <div className="panel center stack">
+            <span className="spinner" />
+            <p className="muted">L’organisateur va révéler le premier vin…</p>
+          </div>
+        )}
+        {[...visible].reverse().map((w, i) => (
+          <div key={w.id} className={`panel reveal-card ${i === 0 ? 'latest' : ''}`}>
+            <div className="row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+              <Capsule n={w.number} size={i === 0 ? 'lg' : 'sm'} />
+              <div className="grow">
+                <div className="wine-name">{wineTitle(w)}</div>
+                <div className="facts">{[w.appellation, w.vintage || 'Non millésimé'].filter(Boolean).join(', ')}</div>
+                <div className="facts">{[w.grapes, w.region, w.country, w.color].filter(Boolean).join(' · ')}</div>
+                {w.owner && <div className="facts">Apportée par {w.owner}</div>}
+                {w.notes && <div className="facts" style={{ fontStyle: 'italic' }}>« {w.notes} »</div>}
+                {w.myNote !== null && w.myNote !== undefined && <div className="tiny" style={{ marginTop: 4 }}>Votre note : {fmtNote(w.myNote)}/20</div>}
+              </div>
+              <div className="score">
+                {fmtNote(w.average)}
+                <small>/20</small>
+                {w.rank && (
+                  <div className="tiny muted" style={{ fontFamily: 'var(--sans)', marginTop: 4 }}>
+                    {w.rank === 1 ? '1er' : `${w.rank}e`} sur {data.total}
+                  </div>
+                )}
+              </div>
+            </div>
+            {i === 0 && w.comments?.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                {w.comments.slice(0, 3).map((c, k) => (
+                  <div key={k} className="quote">
+                    <div>{c.text}</div>
+                    <div className="who">{c.author}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </main>
+  );
+}
+
+// ---------- Podium final ----------
+function Podium({ data, animate }) {
+  const best = data.wines.filter((w) => w.rank === 1);
+  const tasters = data.tasters.filter((t) => t.rank && t.answered > 0);
+  const top = [1, 2, 3].map((r) => tasters.filter((t) => t.rank === r));
+  if (!best.length && !tasters.length) return null;
+  const names = (list) => list.map((t) => t.name).join(' et ');
+  return (
+    <div className={`panel stack ${animate ? 'reveal-in' : ''}`} style={{ marginBottom: 12 }}>
+      {best.length > 0 && (
+        <div className="center">
+          <div className="muted small">Meilleur vin de la soirée</div>
+          <div className="row" style={{ justifyContent: 'center', marginTop: 6 }}>
+            <Capsule n={best[0].number} />
+            <div style={{ textAlign: 'left' }}>
+              <div className="wine-name">{best.map(wineTitle).join(' et ')}</div>
+              <div className="facts">
+                {fmtNote(best[0].average)}/20{best.length === 1 && best[0].owner ? ` · apportée par ${best[0].owner}` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {tasters.length > 0 && (
+        <>
+          <div className="muted small center" style={{ marginTop: 6 }}>
+            Podium des dégustateurs
+          </div>
+          <div className="podium">
+            {[1, 0, 2].map((i) => (
+              <div key={i} className={`step p${i + 1}`} style={{ visibility: top[i].length ? 'visible' : 'hidden' }}>
+                <div className="medal">{i + 1}</div>
+                <div className="who">{names(top[i]) || '-'}</div>
+                <div className="pts">{top[i][0] ? `${top[i][0].points} pts` : ''}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

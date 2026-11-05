@@ -40,7 +40,7 @@ Remplis la fiche avec l'outil fiche_bouteille, en français.
 
 export const POST = route(async (req, { code }) => {
   const { tasting } = await requireParticipant(code);
-  if (tasting.phase === 'revelee') throw new HttpError(403, 'L’ajout de bouteilles est fermé.');
+  if (tasting.phase === 'revelee' || tasting.phase === 'revelation') throw new HttpError(403, 'L’ajout de bouteilles est fermé.');
   if (!process.env.ANTHROPIC_API_KEY) throw new HttpError(503, 'La lecture par photo n’est pas activée sur ce site. Saisissez la bouteille à la main.');
 
   const { image } = await body(req);

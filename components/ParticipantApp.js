@@ -42,6 +42,15 @@ export default function ParticipantApp({ code }) {
         {error && <Notice kind="error">Connexion instable, nouvelle tentative automatique…</Notice>}
         {tasting.phase === 'preparation' && <Waiting name={me.name} />}
         <MyBottles data={data} code={code} onChange={(myBottles) => setData((d) => ({ ...d, myBottles }))} />
+        {tasting.phase === 'revelation' && (
+          <div className="panel stack center reveal-in">
+            <h2>La révélation a commencé</h2>
+            <p>Les fiches sont verrouillées. Suivez la révélation des vins, un par un, jusqu’au podium.</p>
+            <Link href={`/t/${code}/resultats`} className="btn gold block">
+              Suivre la révélation
+            </Link>
+          </div>
+        )}
         {tasting.phase === 'revelee' && (
           <div className="panel stack center reveal-in">
             <h2>Les bouteilles sont révélées</h2>
@@ -72,10 +81,43 @@ function Waiting({ name }) {
   );
 }
 
+function WineRow({ b, code, sheets, mine, now, later }) {
+  const s = sheets[b.id] || {};
+  return (
+    <li className={now ? 'now-serving' : ''}>
+      <Link className={`wine-row ${later ? 'later' : ''}`} href={`/t/${code}/vin/${b.number}`}>
+        <Capsule n={b.number} size={now ? 'lg' : ''} />
+        <div className="grow">
+          {now && <span className="now-badge">En cours de service</span>}
+          <div className="title">Vin n°{b.number}</div>
+          {mine && <div className="tiny muted">Votre bouteille</div>}
+          <div className="ticks">
+            <span className={`tick ${ratingDone(s.rating) ? 'done' : ''}`}>
+              {ratingDone(s.rating) ? `Fiche · ${String(s.rating.note).replace('.', ',')}/20` : 'Fiche à remplir'}
+            </span>
+            <span className={`tick ${predictionDone(s.prediction) ? 'done' : ''}`}>{predictionDone(s.prediction) ? 'Pronostic fait' : 'Pronostic à faire'}</span>
+          </div>
+        </div>
+        <span className="chev" aria-hidden="true">
+          ›
+        </span>
+      </Link>
+    </li>
+  );
+}
+
 function WineList({ data, code }) {
   const { bottles, sheets, tasting } = data;
   const mineIds = new Set((data.myBottles || []).map((b) => b.id));
   const done = bottles.filter((b) => ratingDone(sheets[b.id]?.rating)).length;
+  const served = new Set(tasting.served_numbers || []);
+  const live = tasting.phase === 'degustation' && served.size > 0;
+  const current = bottles.find((b) => b.number === tasting.current_number);
+  // Ordre : le vin en cours, puis les vins déjà servis (le plus récent d'abord), puis les autres.
+  const servedList = bottles.filter((b) => served.has(b.number) && b !== current).sort((a, c) => c.number - a.number);
+  const laterList = bottles.filter((b) => !served.has(b.number) && b !== current);
+  const row = (b, extra = {}) => <WineRow key={b.id} b={b} code={code} sheets={sheets} mine={mineIds.has(b.id)} {...extra} />;
+
   return (
     <>
       <div className="row between">
@@ -86,33 +128,25 @@ function WineList({ data, code }) {
           {done} / {bottles.length} notés
         </span>
       </div>
-      <ul className="panel flush wine-list">
-        {bottles.map((b, i) => {
-          const s = sheets[b.id] || {};
-          return (
-            <li key={b.id}>
-              <Link className="wine-row" href={`/t/${code}/vin/${b.number}`}>
-                <Capsule n={b.number} />
-                <div className="grow">
-                  <div className="title">Vin n°{b.number}</div>
-                  <div className="tiny muted">
-                    {mineIds.has(b.id) ? 'Votre bouteille' : ''}
-                  </div>
-                  <div className="ticks">
-                    <span className={`tick ${ratingDone(s.rating) ? 'done' : ''}`}>
-                      {ratingDone(s.rating) ? `Fiche · ${String(s.rating.note).replace('.', ',')}/20` : 'Fiche à remplir'}
-                    </span>
-                    <span className={`tick ${predictionDone(s.prediction) ? 'done' : ''}`}>{predictionDone(s.prediction) ? 'Pronostic fait' : 'Pronostic à faire'}</span>
-                  </div>
-                </div>
-                <span className="chev" aria-hidden="true">
-                  ›
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      {live ? (
+        <>
+          {current && <ul className="panel flush wine-list">{row(current, { now: true })}</ul>}
+          {servedList.length > 0 && (
+            <>
+              <div className="section-label">Déjà servis</div>
+              <ul className="panel flush wine-list">{servedList.map((b) => row(b))}</ul>
+            </>
+          )}
+          {laterList.length > 0 && (
+            <>
+              <div className="section-label">Pas encore servis</div>
+              <ul className="panel flush wine-list">{laterList.map((b) => row(b, { later: true }))}</ul>
+            </>
+          )}
+        </>
+      ) : (
+        <ul className="panel flush wine-list">{bottles.map((b) => row(b, { now: tasting.phase === 'degustation' && b.number === tasting.current_number }))}</ul>
+      )}
       {tasting.phase === 'degustation' && <p className="tiny muted center">Tout est enregistré automatiquement à chaque modification.</p>}
     </>
   );
@@ -249,7 +283,7 @@ function MyBottles({ data, code, onChange }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const prep = tasting.phase === 'preparation';
-  const open = tasting.phase !== 'revelee'; // on peut ajouter des bouteilles jusqu'à la révélation
+  const open = tasting.phase === 'preparation' || tasting.phase === 'degustation'; // ajout possible jusqu'à la révélation
 
   async function send(payload) {
     setBusy(true);

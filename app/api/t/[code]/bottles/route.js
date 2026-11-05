@@ -11,6 +11,7 @@ export const POST = route(async (req, { code }) => {
   const { tasting, me } = await requireParticipant(code);
   const b = await body(req);
   const mine = (q) => q.eq('tasting_id', tasting.id).eq('owner_id', me.id);
+  if (tasting.phase === 'revelation') throw new HttpError(403, 'La révélation a commencé : les bouteilles ne peuvent plus être modifiées.');
 
   if (b.action === 'add') {
     if (tasting.phase === 'revelee') throw new HttpError(403, 'La soirée est terminée : les bouteilles sont révélées.');
