@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, Band, Notice, Capsule, Loading, fmtNote } from './ui';
+import { ITEM_MAX, MAX_POINTS_PER_BOTTLE } from '@/lib/constants';
 
 const TABS = [
   ['vins', 'Meilleur vin'],
@@ -11,7 +12,7 @@ const TABS = [
   ['resume', 'Résumé'],
 ];
 
-const DETAIL_LABELS = { appellation: 'Appellation', grapes: 'Cépage', region: 'Région', country: 'Pays', color: 'Couleur', vintage: 'Millésime' };
+const DETAIL_LABELS = { appellation: 'Appellation', grapes: 'Cépage', vintage: 'Millésime', region: 'Région', country: 'Pays', color: 'Couleur' };
 
 export default function ResultsPage({ code }) {
   const [data, setData] = useState(null);
@@ -111,6 +112,7 @@ function Tasters({ data }) {
                 {data.me?.id === t.id ? ' (vous)' : ''}
               </div>
               <div className="facts">
+                {t.max ? `${String(Math.round((t.points / t.max) * 200) / 10).replace('.', ',')}/20 de moyenne par vin · ` : ''}
                 {t.answered} pronostic{t.answered > 1 ? 's' : ''} · {t.appellations} appellation{t.appellations > 1 ? 's' : ''} trouvée{t.appellations > 1 ? 's' : ''}
                 {t.hors_concours ? ' · hors concours' : ''}
               </div>
@@ -129,13 +131,12 @@ function Tasters({ data }) {
                 <div key={d.bottleId} className="row small" style={{ alignItems: 'flex-start', flexWrap: 'nowrap' }}>
                   <Capsule n={d.number} size="xs" />
                   <div className="grow">
-                    <strong>{d.total} pts</strong> <span className="muted">{numById[d.bottleId] ? wineTitle(numById[d.bottleId]) : ''}</span>
+                    <strong>{d.total}/{MAX_POINTS_PER_BOTTLE} pts</strong> <span className="muted">{numById[d.bottleId] ? wineTitle(numById[d.bottleId]) : ''}</span>
                     <div className="tiny muted">
                       {d.answered
-                        ? Object.entries(d.detail)
-                            .filter(([, v]) => v > 0)
-                            .map(([k, v]) => `${DETAIL_LABELS[k]} +${v}`)
-                            .join(', ') || 'Aucun point'
+                        ? Object.keys(DETAIL_LABELS)
+                            .map((k) => `${DETAIL_LABELS[k]} ${d.detail[k]}/${ITEM_MAX[k]}`)
+                            .join(' · ')
                         : 'Pas de pronostic'}
                     </div>
                   </div>
@@ -146,7 +147,7 @@ function Tasters({ data }) {
         </div>
       ))}
       <p className="tiny muted" style={{ padding: '0 16px 14px' }}>
-        Total des points de pronostics, hors bouteille apportée. En cas d’égalité, le plus d’appellations trouvées passe devant. HC : hors concours.
+        Total des points de pronostics (20 points maximum par vin), hors bouteille apportée. En cas d’égalité, le plus d’appellations trouvées passe devant. HC : hors concours.
       </p>
     </div>
   );

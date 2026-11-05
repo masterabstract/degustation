@@ -1,7 +1,7 @@
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body, cleanText } from '@/lib/http';
 import { requireAdmin } from '@/lib/auth';
-import { bottleFields, SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
+import { bottleFields, numberMissing, SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,17 +104,12 @@ export const POST = route(async (req, { code }) => {
       const bottles = unwrap(await one(db().from('bottles').select('id, number')));
       if (!bottles.length) throw new HttpError(400, 'Ajoutez d’abord des bouteilles.');
       if (b.mode === 'missing') {
-        const taken = bottles.filter((x) => x.number).map((x) => x.number);
-        let next = taken.length ? Math.max(...taken) : 0;
-        for (const x of shuffle(bottles.filter((x) => !x.number))) {
-          next += 1;
-          unwrap(await one(db().from('bottles').update({ number: next }).eq('id', x.id)));
-        }
+        await numberMissing(T);
       } else {
         unwrap(await one(db().from('bottles').update({ number: null })));
         const nums = shuffle(bottles.map((_, i) => i + 1));
         for (let i = 0; i < bottles.length; i++) {
-          unwrap(await one(db().from('bottles').update({ number: nums[i] }).eq('id', bottles[i].id)));
+          unwrap(await one(db().from('bottles').update({ number: nums[i], serve_order: nums[i] }).eq('id', bottles[i].id)));
         }
       }
       unwrap(await db().from('tastings').update({ numbers_drawn: true }).eq('id', T));
@@ -124,14 +119,10 @@ export const POST = route(async (req, { code }) => {
     // ----- Déroulé -----
     case 'start': {
       if (!prep) throw new HttpError(400, 'La dégustation a déjà commencé.');
-      const bottles = unwrap(await one(db().from('bottles').select('id, number, serve_order')));
-      if (!bottles.length) throw new HttpError(400, 'Ajoutez au moins une bouteille.');
-      if (bottles.some((x) => !x.number)) throw new HttpError(400, 'Toutes les bouteilles doivent avoir un numéro anonyme : tirez les numéros au sort.');
-      // L'ordre de service se décide en direct pendant la soirée :
-      // les vins sont simplement présentés par numéro.
-      for (const x of bottles) {
-        if (x.serve_order !== x.number) unwrap(await one(db().from('bottles').update({ serve_order: x.number }).eq('id', x.id)));
-      }
+      // La dégustation peut démarrer à tout moment, même avec une seule bouteille
+      // (ou aucune) : les bouteilles sans numéro en reçoivent un maintenant, et
+      // celles ajoutées ensuite seront numérotées dès leur enregistrement.
+      await numberMissing(T);
       unwrap(await db().from('tastings').update({ phase: 'degustation' }).eq('id', T));
       break;
     }

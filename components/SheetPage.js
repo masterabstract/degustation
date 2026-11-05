@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { api, Band, Notice, Capsule, Chips, Scale, NoteInput, Loading } from './ui';
 import Autocomplete from './Autocomplete';
 import { APPELLATION_OPTIONS, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
-import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
+import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE, SCORING, MAX_POINTS_PER_BOTTLE, VINTAGE_TIERS } from '@/lib/constants';
 
 const EMPTY_RATING = {
   robe: null, intensite_visuelle: null, intensite_nez: null, aromes: [], acidite: null,
@@ -246,8 +246,8 @@ export default function SheetPage({ code, number }) {
 
         {tab === 'prono' && (
           <div className="panel" style={{ marginTop: 12 }}>
-            <p className="small muted">D’après vous, quel est ce vin ? Vos pronostics restent secrets jusqu’à la révélation.</p>
-            <Crit title="Appellation">
+            <p className="small muted">D’après vous, quel est ce vin ? Chaque bonne réponse rapporte les points indiqués, jusqu’à {MAX_POINTS_PER_BOTTLE} points par vin. Vos pronostics restent secrets jusqu’à la révélation.</p>
+            <Crit title="Appellation" pts={`${SCORING.appellation} pts`}>
               <Autocomplete
                 value={pred.appellation}
                 onChange={(v) => change('pred', { appellation: v })}
@@ -264,7 +264,7 @@ export default function SheetPage({ code, number }) {
               />
               {autoNote && <div className="autofill-note">{autoNote}</div>}
             </Crit>
-            <Crit title="Cépage">
+            <Crit title="Cépage" pts={`${SCORING.grapesAll} pts`} hint={`${SCORING.grapesAll} pts si tout est juste, ${SCORING.grapesSome} pts si au moins un est juste, puis ${SCORING.grapesWrongPenalty} pt en moins par cépage faux. Séparez les cépages par des virgules.`}>
               <Autocomplete
                 multi
                 value={pred.grapes}
@@ -276,7 +276,7 @@ export default function SheetPage({ code, number }) {
                 disabled={locked}
               />
             </Crit>
-            <Crit title="Région">
+            <Crit title="Région" pts={`${SCORING.region} pts`}>
               <Autocomplete
                 value={pred.region}
                 onChange={(v) => change('pred', { region: v })}
@@ -291,7 +291,7 @@ export default function SheetPage({ code, number }) {
                 disabled={locked}
               />
             </Crit>
-            <Crit title="Pays">
+            <Crit title="Pays" pts={`${SCORING.country} pts`}>
               <select className="input" aria-label="Pays" value={pred.country} onChange={(e) => change('pred', { country: e.target.value })} disabled={locked}>
                 <option value="">Choisir un pays</option>
                 {COUNTRIES.map((x) => (
@@ -299,10 +299,10 @@ export default function SheetPage({ code, number }) {
                 ))}
               </select>
             </Crit>
-            <Crit title="Couleur">
+            <Crit title="Couleur" pts={`${SCORING.color} pts`}>
               <Chips options={COLORS} value={pred.color} onChange={(v) => change('pred', { color: v })} disabled={locked} />
             </Crit>
-            <Crit title="Millésime">
+            <Crit title="Millésime" pts={`${SCORING.vintage} pts`} hint="Plus le vin est ancien, plus la marge d’erreur est grande (voir le barème ci-dessous).">
               <div className="row">
                 <input
                   className="input grow"
@@ -327,6 +327,7 @@ export default function SheetPage({ code, number }) {
                   Non millésimé
                 </button>
               </div>
+              <VintageTable />
             </Crit>
           </div>
         )}
@@ -355,12 +356,13 @@ export default function SheetPage({ code, number }) {
   );
 }
 
-function Crit({ n, title, hint, children }) {
+function Crit({ n, title, hint, pts, children }) {
   return (
     <section className="crit">
       <div className="crit-head">
         {n && <span className="crit-num">{n}</span>}
         <span className="crit-title">{title}</span>
+        {pts && <span className="pill" style={{ marginLeft: 'auto' }}>{pts}</span>}
       </div>
       {hint && <div className="crit-hint">{hint}</div>}
       {children}
@@ -384,4 +386,29 @@ function safeDel(k) {
   try {
     localStorage.removeItem(k);
   } catch {}
+}
+
+export function VintageTable() {
+  return (
+    <table className="grid tiny" style={{ marginTop: 10 }}>
+      <thead>
+        <tr>
+          <th>Millésime réel</th>
+          <th>4 pts</th>
+          <th>2 pts</th>
+          <th>1 pt</th>
+        </tr>
+      </thead>
+      <tbody>
+        {VINTAGE_TIERS.map((t) => (
+          <tr key={t.label}>
+            <td>{t.label}</td>
+            {t.margins.map((m, i) => (
+              <td key={i}>{m === 0 ? 'exact' : `± ${m} an${m > 1 ? 's' : ''}`}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }

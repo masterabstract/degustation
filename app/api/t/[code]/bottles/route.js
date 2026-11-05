@@ -1,7 +1,7 @@
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body } from '@/lib/http';
 import { requireParticipant } from '@/lib/auth';
-import { bottleFields, SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
+import { bottleFields, numberMissing, SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,16 +13,21 @@ export const POST = route(async (req, { code }) => {
   const mine = (q) => q.eq('tasting_id', tasting.id).eq('owner_id', me.id);
 
   if (b.action === 'add') {
-    if (tasting.phase !== 'preparation') throw new HttpError(403, 'L’ajout de bouteilles est fermé : la dégustation a commencé. Demandez à l’organisateur de repasser en préparation.');
+    if (tasting.phase === 'revelee') throw new HttpError(403, 'La soirée est terminée : les bouteilles sont révélées.');
     const count = unwrap(await mine(db().from('bottles').select('id'))).length;
     if (count >= 6) throw new HttpError(400, 'Maximum 6 bouteilles par participant.');
     unwrap(await db().from('bottles').insert({ tasting_id: tasting.id, owner_id: me.id, ...bottleFields(b.bottle || {}) }), 'Bouteille non enregistrée.');
+    // Pendant la dégustation, la bouteille reçoit tout de suite le numéro suivant.
+    if (tasting.phase === 'degustation') await numberMissing(tasting.id);
   } else if (b.action === 'update') {
-    if (tasting.phase === 'degustation') throw new HttpError(403, 'Modification impossible pendant la dégustation.');
     const r = unwrap(await mine(db().from('bottles').update(bottleFields(b.bottle || {})).eq('id', b.id)).select('id'));
     if (!r.length) throw new HttpError(404, 'Bouteille introuvable.');
   } else if (b.action === 'delete') {
-    if (tasting.phase !== 'preparation') throw new HttpError(403, 'Suppression impossible une fois la dégustation commencée.');
+    if (tasting.phase === 'revelee') throw new HttpError(403, 'Suppression impossible après la révélation.');
+    if (tasting.phase === 'degustation') {
+      const used = unwrap(await db().from('ratings').select('id').eq('bottle_id', b.id).limit(1));
+      if (used.length) throw new HttpError(403, 'Cette bouteille a déjà été notée : elle ne peut plus être retirée.');
+    }
     unwrap(await mine(db().from('bottles').delete().eq('id', b.id)));
   } else {
     throw new HttpError(400, 'Action inconnue.');

@@ -6,7 +6,7 @@ import { APPELLATION_OPTIONS, fillFromAppellation, fillFromRegion, describePatch
 import { api, Chips, Notice, Spinner } from './ui';
 import { COLORS, COUNTRIES, REGIONS, GRAPES } from '@/lib/constants';
 
-const EMPTY = { producer: '', appellation: '', grapes: '', region: '', country: 'France', color: null, wine_name: '', vintage: '', notes: '' };
+const EMPTY = { producer: '', appellation: '', grapes: '', region: '', country: 'France', color: null, wine_name: '', vintage: '', non_vintage: false, notes: '' };
 
 // Réduit la photo sur le téléphone avant l'envoi (plus rapide, moins de données).
 async function shrink(file, max = 1568) {
@@ -139,25 +139,38 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
         </span>
         <Chips options={COLORS} value={b.color} onChange={set('color')} />
       </div>
-      <details>
-        <summary className="small">Cuvée, millésime, petit mot (facultatif)</summary>
-        <div className="stack" style={{ marginTop: 12 }}>
-          <label className="field">
-            <span>Nom de la cuvée</span>
-            <input className="input" value={b.wine_name} onChange={set('wine_name')} placeholder="Ex : Les Gamins" maxLength={120} />
-          </label>
-          <label className="field">
-            <span>Millésime</span>
-            <input className="input" type="number" inputMode="numeric" min="1900" max="2100" value={b.vintage} onChange={set('vintage')} placeholder="Vide si non millésimé" />
-          </label>
-          <label className="field">
-            <span>Petit mot pour la révélation</span>
-            <input className="input" value={b.notes} onChange={set('notes')} placeholder="Ex : rapporté de mes vacances" maxLength={400} />
-          </label>
+      <label className="field">
+        <span>Nom de la cuvée</span>
+        <input className="input" value={b.wine_name} onChange={set('wine_name')} placeholder="Ex : Les Gamins (si la bouteille en a un)" maxLength={120} aria-label="Nom de la cuvée" />
+      </label>
+      <div className="field">
+        <span>Millésime *</span>
+        <div className="row" style={{ flexWrap: 'nowrap' }}>
+          <input
+            className="input"
+            style={{ flex: 1 }}
+            type="number"
+            inputMode="numeric"
+            min="1900"
+            max="2100"
+            value={b.non_vintage ? '' : b.vintage}
+            onChange={set('vintage')}
+            placeholder={b.non_vintage ? 'Non millésimé' : 'Ex : 2019'}
+            disabled={b.non_vintage}
+            aria-label="Millésime"
+          />
+          <button type="button" className="chip" aria-pressed={b.non_vintage} onClick={() => setB((x) => ({ ...x, non_vintage: !x.non_vintage }))}>
+            Non millésimé
+          </button>
         </div>
-      </details>
+      </div>
+      <label className="field">
+        <span>Petit mot pour la révélation</span>
+        <input className="input" value={b.notes} onChange={set('notes')} placeholder="Ex : rapporté de mes vacances en Bourgogne" maxLength={400} aria-label="Petit mot pour la révélation" />
+      </label>
+      <p className="tiny muted" style={{ margin: 0 }}>* champ obligatoire</p>
       <div className="row">
-        <button className="btn" disabled={busy || !b.producer.trim()}>
+        <button className="btn" disabled={busy || !b.producer.trim() || (!b.non_vintage && !String(b.vintage).trim())}>
           {initial?.id ? 'Enregistrer les modifications' : 'Enregistrer la bouteille'}
         </button>
         {onCancel && (
@@ -176,6 +189,7 @@ function clean(x) {
   for (const k of Object.keys(EMPTY)) o[k] = x[k] ?? EMPTY[k];
   o.vintage = x.vintage ?? '';
   if (o.wine_name === o.producer) o.wine_name = ''; // pas de cuvée distincte
+  if (x.id && (x.vintage === null || x.vintage === undefined)) o.non_vintage = true;
   if (x.id && !x.country) o.country = '';
   return o;
 }

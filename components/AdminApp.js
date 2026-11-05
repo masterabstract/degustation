@@ -156,7 +156,7 @@ function TabHome({ data, act, busy, code, setTab }) {
   const steps = [
     { done: participants.length > 0, text: `${participants.length} participant${participants.length > 1 ? 's' : ''} inscrit${participants.length > 1 ? 's' : ''}`, tab: 'participants' },
     { done: bottles.length > 0, text: `${bottles.length} bouteille${bottles.length > 1 ? 's' : ''} enregistrée${bottles.length > 1 ? 's' : ''} par les participants${without ? ` (${without} sans bouteille)` : ''}`, tab: 'bouteilles' },
-    { done: numbered, text: numbered ? 'Numéros anonymes tirés au sort' : 'Numéros anonymes à tirer au sort', tab: 'bouteilles' },
+    { done: numbered, text: numbered ? 'Numéros anonymes attribués' : 'Numéros attribués automatiquement au lancement', tab: 'bouteilles' },
   ];
 
   return (
@@ -196,10 +196,10 @@ function TabHome({ data, act, busy, code, setTab }) {
               </button>
             </div>
           ))}
-          <button className="btn gold block" disabled={busy || !numbered} onClick={() => act('start', {}, 'La dégustation est lancée.')}>
+          <button className="btn gold block" disabled={busy} onClick={() => act('start', {}, 'La dégustation est lancée.')}>
             Lancer la dégustation
           </button>
-          {!numbered && <p className="tiny muted center">Le lancement nécessite au moins une bouteille et des numéros tirés au sort.</p>}
+          <p className="tiny muted center">Vous pouvez lancer dès la première bouteille : les suivantes s’ajouteront au fur et à mesure.</p>
         </div>
       )}
 
@@ -358,7 +358,7 @@ function TabBottles({ data, act, busy }) {
         <div className="panel stack">
           <h2>Numéros anonymes</h2>
           <p className="small muted">
-            Quand toutes les bouteilles sont enregistrées, tirez les numéros au sort. Chaque participant voit alors sur son téléphone le numéro de ses bouteilles et l’écrit dessus après les avoir masquées (chaussette, papier aluminium).
+            Les numéros sont attribués au hasard automatiquement au lancement de la dégustation. Vous pouvez aussi les tirer dès maintenant, pour que chacun puisse étiqueter sa bouteille masquée (chaussette, papier aluminium) avant de commencer.
           </p>
           <div className="row">
             <button
@@ -381,6 +381,20 @@ function TabBottles({ data, act, busy }) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {tasting.phase === 'degustation' && (
+        <div className="panel stack">
+          <h2>Numéros</h2>
+          <p className="small muted">
+            Une bouteille ajoutée pendant la dégustation reçoit automatiquement le numéro suivant et apparaît aussitôt sur tous les téléphones. Son propriétaire voit le numéro à écrire dessus.
+          </p>
+          <div className="row" style={{ gap: 8 }}>
+            {bottles.map((b) => (
+              <Capsule key={b.id} n={b.number} size="xs" />
+            ))}
+          </div>
         </div>
       )}
 

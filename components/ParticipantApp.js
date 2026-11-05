@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api, usePolling, Band, Notice, Capsule, Loading, fmtDate } from './ui';
 import { SCORING, MAX_POINTS_PER_BOTTLE } from '@/lib/constants';
 import BottleForm from './BottleForm';
+import { VintageTable } from './SheetPage';
 
 export function ratingDone(r) {
   return r && r.note !== null && r.note !== undefined;
@@ -126,21 +127,22 @@ function Rules() {
         <div className="breakdown">
           <strong>{SCORING.appellation} pts</strong>
           <span>appellation exacte</span>
-          <strong>{SCORING.grapes} pts</strong>
-          <span>un cépage juste</span>
+          <strong>{SCORING.grapesAll} pts</strong>
+          <span>
+            cépages tous justes ; {SCORING.grapesSome} pts si au moins un est juste, puis {SCORING.grapesWrongPenalty} pt en moins par cépage faux
+          </span>
+          <strong>{SCORING.vintage} pts</strong>
+          <span>millésime, avec une marge plus large pour les vins anciens (tableau ci-dessous)</span>
           <strong>{SCORING.region} pts</strong>
           <span>région exacte</span>
           <strong>{SCORING.country} pts</strong>
           <span>pays exact</span>
           <strong>{SCORING.color} pts</strong>
           <span>couleur exacte</span>
-          <strong>
-            {SCORING.vintageExact}/{SCORING.vintageOne}/{SCORING.vintageTwo} pts
-          </strong>
-          <span>millésime exact, à 1 an, à 2 ans</span>
         </div>
+        <VintageTable />
         <p style={{ marginTop: 10 }}>
-          Maximum {MAX_POINTS_PER_BOTTLE} points par vin. Votre propre bouteille ne compte ni dans votre score de pronostics, ni dans la note moyenne du vin.
+          Soit {MAX_POINTS_PER_BOTTLE} points maximum par vin. Votre propre bouteille ne compte ni dans votre score de pronostics, ni dans la note moyenne du vin.
           Les pronostics sont verrouillés au moment de la révélation.
         </p>
       </div>
@@ -247,6 +249,7 @@ function MyBottles({ data, code, onChange }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const prep = tasting.phase === 'preparation';
+  const open = tasting.phase !== 'revelee'; // on peut ajouter des bouteilles jusqu'à la révélation
 
   async function send(payload) {
     setBusy(true);
@@ -263,12 +266,12 @@ function MyBottles({ data, code, onChange }) {
     }
   }
 
-  if (!prep && !myBottles.length) return null;
+  if (!open && !myBottles.length) return null;
 
   return (
     <div className="panel stack">
       <h2>Mes bouteilles</h2>
-      {prep && (
+      {open && (
         <p className="small muted">
           Vous seul voyez ces informations. Ni l’organisateur ni les autres participants n’y ont accès avant la révélation.
         </p>
@@ -290,16 +293,16 @@ function MyBottles({ data, code, onChange }) {
               <div style={{ fontWeight: 700 }}>{[b.producer, b.wine_name !== b.producer ? b.wine_name : null].filter(Boolean).join(', ')}</div>
               <div className="small muted">{[b.appellation, b.grapes, b.region, b.country, b.color].filter(Boolean).join(', ') || 'Détails à compléter'}</div>
               {b.number ? (
-                tasting.phase === 'preparation' && (
+                open && (
                   <div className="small" style={{ color: 'var(--or-fonce)', fontWeight: 600 }}>
                     Masquez la bouteille et écrivez dessus : n°{b.number}
                   </div>
                 )
               ) : (
-                <div className="tiny muted">Numéro attribué au tirage au sort</div>
+                <div className="tiny muted">Le numéro sera attribué au lancement de la dégustation</div>
               )}
             </div>
-            {prep && (
+            {open && (
               <div className="actions">
                 <button className="btn ghost sm" onClick={() => setEditing(b.id)}>
                   Modifier
@@ -313,7 +316,7 @@ function MyBottles({ data, code, onChange }) {
         )
       )}
       <Notice kind="error">{error}</Notice>
-      {prep &&
+      {open &&
         (adding ? (
           <div className="panel">
             <BottleForm
