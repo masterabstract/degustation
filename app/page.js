@@ -56,11 +56,23 @@ export default function Home() {
 
         <div className="panel">
           <h2>Vous organisez ?</h2>
-          <p className="muted">Créez la soirée, ajoutez les participants et enregistrez les bouteilles en secret.</p>
+          <p className="muted">Créez la soirée et invitez les participants : chacun enregistre ses bouteilles en secret.</p>
           <Link href="/organiser" className="btn ghost block">
             Créer une dégustation
           </Link>
         </div>
+
+        <Link href="/archives" className="panel" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
+          <div className="row between">
+            <h2 style={{ margin: 0 }}>Archives et palmarès</h2>
+            <span className="chev" aria-hidden="true">
+              ›
+            </span>
+          </div>
+          <p className="muted small" style={{ marginTop: 4 }}>
+            Les soirées passées, leurs résultats, et le classement général des dégustateurs.
+          </p>
+        </Link>
       </div>
     </main>
   );

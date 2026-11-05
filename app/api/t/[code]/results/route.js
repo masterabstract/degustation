@@ -10,8 +10,12 @@ export const GET = route(async (_req, { code }) => {
   const tasting = await getTasting(code);
   const me = await getParticipant(tasting);
   const admin = await isAdmin(tasting);
-  if (!me && !admin) throw new HttpError(401, 'Rejoignez la dégustation pour voir les résultats.');
-  if (tasting.phase !== 'revelee') throw new HttpError(403, 'Les résultats seront visibles après la révélation.');
+  if (tasting.phase !== 'revelee') {
+    if (!me && !admin) throw new HttpError(401, 'Rejoignez la dégustation pour voir les résultats.');
+    throw new HttpError(403, 'Les résultats seront visibles après la révélation.');
+  }
+  // Après la révélation, plus rien n'est secret : les résultats restent
+  // consultables à tout moment, depuis les archives, sans avoir à se reconnecter.
 
   const q = (t, cols) => db().from(t).select(cols).eq('tasting_id', tasting.id);
   const [participants, bottles, ratings, predictions] = (

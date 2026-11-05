@@ -37,7 +37,7 @@ export default function ResultsPage({ code }) {
 
   return (
     <main>
-      <Band title="Résultats" sub={data.tasting.name} back={`/t/${code}`} />
+      <Band title="Résultats" sub={data.tasting.name} back={data.me ? `/t/${code}` : '/archives'} />
       <div className="page">
         <div className="sticky-tabs">
           <nav className="tabs" role="tablist">
@@ -192,8 +192,8 @@ function Summary({ data }) {
       >
         {copied ? 'Résumé copié' : 'Copier le résumé (pour WhatsApp, e-mail…)'}
       </button>
-      <Link className="small center" href="/">
-        Retour à l’accueil
+      <Link className="small center" href="/archives">
+        Voir toutes les soirées et le palmarès
       </Link>
     </div>
   );

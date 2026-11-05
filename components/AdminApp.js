@@ -227,6 +227,8 @@ function TabHome({ data, act, busy, code, setTab }) {
         </div>
       )}
 
+      <DeleteTasting code={code} name={tasting.name} />
+
       <div className="panel stack">
         <h2>Sauvegarde</h2>
         <p className="small muted">Téléchargez à tout moment une copie complète de la soirée (participants, bouteilles, fiches, pronostics).</p>
@@ -549,5 +551,49 @@ function TabReveal({ data, act, busy, code }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------
+function DeleteTasting({ code, name }) {
+  const [armed, setArmed] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [error, setError] = useState(null);
+  return (
+    <details className="panel">
+      <summary>Supprimer cette soirée</summary>
+      <div className="stack" style={{ marginTop: 12 }}>
+        <p className="small muted">
+          Pour effacer une soirée de test, par exemple. Tout est supprimé définitivement : participants, bouteilles, fiches, pronostics et résultats. Elle disparaît aussi des archives et du palmarès.
+        </p>
+        {!armed ? (
+          <button className="btn ghost" onClick={() => setArmed(true)}>
+            Je veux supprimer cette soirée
+          </button>
+        ) : (
+          <>
+            <label className="field">
+              <span>Recopiez le nom de la soirée pour confirmer : {name}</span>
+              <input className="input" value={typed} onChange={(e) => setTyped(e.target.value)} aria-label="Nom de la soirée à supprimer" />
+            </label>
+            <Notice kind="error">{error}</Notice>
+            <button
+              className="btn danger"
+              disabled={typed.trim() !== name}
+              onClick={async () => {
+                try {
+                  await api(`/api/admin/${code}`, { method: 'POST', body: { action: 'deleteTasting', confirmName: typed } });
+                  window.location.href = '/';
+                } catch (e) {
+                  setError(e.message);
+                }
+              }}
+            >
+              Supprimer définitivement
+            </button>
+          </>
+        )}
+      </div>
+    </details>
   );
 }

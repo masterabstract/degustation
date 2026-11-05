@@ -135,6 +135,12 @@ export const POST = route(async (req, { code }) => {
       if (b.confirm !== true) throw new HttpError(400, 'Confirmation manquante.');
       unwrap(await db().from('tastings').update({ phase: 'revelee', revealed_at: new Date().toISOString() }).eq('id', T));
       break;
+    case 'deleteTasting': {
+      // Suppression définitive de la soirée et de tout son contenu (ex : soirée de test).
+      if (String(b.confirmName || '').trim() !== tasting.name) throw new HttpError(400, 'Recopiez exactement le nom de la soirée pour confirmer.');
+      unwrap(await db().from('tastings').delete().eq('id', T));
+      return json({ deleted: true });
+    }
     case 'rename':
       unwrap(await db().from('tastings').update({ name: cleanText(b.name, 80) || tasting.name }).eq('id', T));
       break;
