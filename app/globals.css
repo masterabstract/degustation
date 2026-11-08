@@ -369,3 +369,24 @@ details[open] > summary::before { content: '− '; }
 .podium .step .pts { font-size: 0.8rem; color: var(--or-clair); margin-top: 4px; }
 .podium .p1 { min-height: 130px; } .podium .p2 { min-height: 100px; } .podium .p3 { min-height: 80px; }
 .podium .medal { font-family: var(--serif); font-size: 1.8rem; color: var(--or-clair); }
+
+/* Carte des régions viticoles (pronostics) */
+.carte { margin: 4px 0 10px; }
+.carte svg { width: 100%; height: auto; display: block; border: 1px solid var(--trait); border-radius: 14px; background: #eef3f4; touch-action: manipulation; }
+.carte-mer { fill: #eef3f4; }
+.carte-voisins { fill: #e9e3d8; stroke: #fff; stroke-width: 0.6; }
+.carte-pays { fill: var(--papier); stroke: var(--trait-fort); stroke-width: 0.8; }
+.carte-zone { fill: #efdfb6; stroke: none; cursor: pointer; transition: fill 0.15s; }
+.carte-zone:hover { fill: var(--or-clair); }
+.carte-zone.on { fill: var(--bordeaux-2); }
+.carte-limites { fill: none; stroke: #fff; stroke-width: 1.2; pointer-events: none; }
+.carte-region { cursor: pointer; }
+.carte-region:focus { outline: none; }
+.carte-cible { fill: transparent; }
+.carte-point { fill: var(--or-fonce); stroke: #fff; stroke-width: 1.5; }
+.carte-nom { font-family: var(--sans); font-size: 13px; font-weight: 600; fill: var(--lie); paint-order: stroke; stroke: rgba(255, 251, 244, 0.9); stroke-width: 3px; stroke-linejoin: round; }
+.carte-region.on .carte-point { fill: var(--bordeaux); }
+.carte-region.on .carte-nom { fill: var(--bordeaux); font-weight: 800; }
+.carte-region:focus-visible .carte-point { stroke: var(--bordeaux); stroke-width: 2.5; }
+.carte-hors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.8rem; color: var(--taupe); }
+.carte-aide { font-size: 0.75rem; color: var(--taupe); margin-top: 6px; }

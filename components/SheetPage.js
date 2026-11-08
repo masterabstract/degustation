@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, Band, Notice, Capsule, Chips, Scale, NoteInput, Loading } from './ui';
 import Autocomplete from './Autocomplete';
+import RegionMap from './RegionMap';
 import { optionsFor, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
 import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
 import { BAREME, VINTAGE_DECADES } from '@/lib/bareme';
@@ -21,7 +22,7 @@ export default function SheetPage({ code, number }) {
   const router = useRouter();
   const [state, setState] = useState(null);
   const [loadError, setLoadError] = useState(null);
-  const [tab, setTab] = useState('fiche');
+  const [tab, setTab] = useState('prono'); // onglet 1 : pronostics, onglet 2 : fiche de dégustation
   const [rating, setRating] = useState(EMPTY_RATING);
   const [pred, setPred] = useState(EMPTY_PRED);
   const [save, setSave] = useState({ status: 'idle', msg: '' });
@@ -179,11 +180,11 @@ export default function SheetPage({ code, number }) {
       <div className="page">
         <div className="sticky-tabs">
           <nav className="tabs" role="tablist">
-            <button role="tab" aria-selected={tab === 'fiche'} onClick={() => setTab('fiche')}>
-              Fiche de dégustation
-            </button>
             <button role="tab" aria-selected={tab === 'prono'} onClick={() => setTab('prono')}>
               Pronostics
+            </button>
+            <button role="tab" aria-selected={tab === 'fiche'} onClick={() => setTab('fiche')}>
+              Fiche de dégustation
             </button>
           </nav>
         </div>
@@ -248,11 +249,6 @@ export default function SheetPage({ code, number }) {
                 disabled={locked}
               />
             </Crit>
-            {!locked && (
-              <button className="btn gold block" style={{ marginTop: 8 }} onClick={() => { setTab('prono'); window.scrollTo({ top: 0 }); }}>
-                Passer aux pronostics
-              </button>
-            )}
           </div>
         )}
 
@@ -273,8 +269,17 @@ export default function SheetPage({ code, number }) {
               title="Région, sous-région ou zone"
               n={2}
               pts="2 à 4 pts"
-              hint={`Choisissez la région : la liste des appellations et des cépages se limite ensuite à cette région. Si l’appellation est fausse, une bonne région rapporte quand même : vin français 3 points ; vin étranger, sous-région 4, grande région 3, zone ou province 2.${pred.country ? '' : ' Choisissez d’abord le pays.'}`}
+              hint={`Touchez la région sur la carte ou tapez son nom : les appellations et les cépages proposés se limitent ensuite à cette région. Si l’appellation est fausse, une bonne région rapporte quand même : vin français 3 points ; vin étranger, sous-région 4, grande région 3, zone ou province 2.${pred.country ? '' : ' Choisissez d’abord le pays.'}`}
             >
+              <RegionMap
+                country={pred.country}
+                value={pred.region}
+                disabled={locked}
+                onPick={(name) => {
+                  const patch = fillFromRegion({ ...pred, region: name }, name, filled.current);
+                  change('pred', { region: name, ...(patch || {}) });
+                }}
+              />
               <Autocomplete
                 value={pred.region}
                 onChange={(v) => change('pred', { region: v })}
@@ -361,6 +366,11 @@ export default function SheetPage({ code, number }) {
               </div>
               <VintageTable />
             </Crit>
+            {!locked && (
+              <button className="btn gold block" style={{ marginTop: 8 }} onClick={() => { setTab('fiche'); window.scrollTo({ top: 0 }); }}>
+                Passer à la fiche de dégustation
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -186,7 +186,7 @@ function Rules() {
         </p>
         <VintageTable />
         <p>
-          <strong>Classement</strong> : au pourcentage des points possibles, car personne ne joue sur ses propres bouteilles. En cas d’égalité : cépages, puis géographie, puis pays, puis millésime. Les accents, majuscules, tirets et synonymes courants (Shiraz et Syrah, DOCG, 1er cru…) ne comptent pas.
+          <strong>Classement</strong> : au pourcentage des points possibles, car personne ne joue sur ses propres bouteilles. En cas d’égalité : cépages, puis géographie, puis pays, puis millésime.
         </p>
       </div>
     </details>
