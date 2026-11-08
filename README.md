@@ -18,7 +18,7 @@ Site web pour organiser une dégustation de vin à l'aveugle : fiches de dégust
 | --- | --- |
 | `SUPABASE_URL` | adresse du projet, `https://xxxx.supabase.co` |
 | `SUPABASE_SECRET_KEY` | clé secrète Supabase (`sb_secret_...`) |
-| `ORGANIZER_PASSWORD` | mot de passe exigé pour créer une soirée |
+| `ORGANIZER_PASSWORD` | mot de passe obligatoire pour créer une soirée ou effacer des archives (sans lui, la création est bloquée en ligne) |
 | `ANTHROPIC_API_KEY` | facultatif : active la lecture des étiquettes en photo (API Claude) |
 | `ANTHROPIC_MODEL` | facultatif : modèle utilisé, `claude-sonnet-5-5` par défaut |
 

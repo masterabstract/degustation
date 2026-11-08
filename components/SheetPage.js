@@ -500,12 +500,12 @@ function safeDel(k) {
 export function VintageTable() {
   const f = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
   return (
-    <table className="grid tiny" style={{ marginTop: 10 }}>
+    <table className="grid fit tiny" style={{ marginTop: 10 }}>
       <thead>
         <tr>
           <th>Millésime réel</th>
           <th>Par année d’écart</th>
-          <th>0 point à partir de</th>
+          <th>0 point dès</th>
         </tr>
       </thead>
       <tbody>

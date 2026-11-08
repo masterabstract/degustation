@@ -99,7 +99,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
           ))}
         </select>
         <span className="tiny muted" style={{ fontWeight: 400, marginTop: 4 }}>
-          {b.country === 'France' ? 'Vin français : noté sur 20 points.' : b.country ? 'Vin étranger : noté sur 23 points.' : 'Le pays décide du barème et des listes proposées ci-dessous.'}{b.country ? ' Géographie : la région rapporte 3 points et l’appellation 2 points, jugées séparément ; la région est donc obligatoire, même pour un Vin de France.' : ''}
+          {b.country === 'France' ? 'Vin français : noté sur 20 points.' : b.country ? 'Vin étranger : noté sur 23 points.' : 'Le pays décide du barème et des listes proposées ci-dessous.'}{b.country ? ` Géographie : la région rapporte 3 points et l’appellation 2 points, jugées séparément ; la région est donc obligatoire${b.country === 'France' ? ', même pour un Vin de France' : ''}.` : ''}
         </span>
       </label>
       <label className="field">

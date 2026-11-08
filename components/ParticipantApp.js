@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, usePolling, Band, Notice, Capsule, Loading, fmtDate } from './ui';
 import { BAREME } from '@/lib/bareme';
 import BottleForm from './BottleForm';
 import { VintageTable } from './SheetPage';
+import { rememberSoiree, forgetSoiree } from '@/lib/memo';
 
 export function ratingDone(r) {
   return r && r.note !== null && r.note !== undefined;
@@ -17,6 +18,15 @@ export function predictionDone(p) {
 
 export default function ParticipantApp({ code }) {
   const { data, setData, error, refresh } = usePolling(() => api(`/api/t/${code}`), 5000, [code]);
+  // On retient la soirée sur ce téléphone : retour direct depuis l'accueil, sans retaper le code.
+  const meName = data?.me?.name;
+  const tName = data?.tasting?.name;
+  useEffect(() => {
+    if (meName) rememberSoiree({ code, name: tName, who: meName });
+  }, [code, meName, tName]);
+  useEffect(() => {
+    if (error?.status === 404) forgetSoiree(code);
+  }, [code, error?.status]);
 
   if (error && !data) {
     return (
@@ -179,7 +189,7 @@ function Rules() {
     <details className="panel">
       <summary>Règles et barème des pronostics</summary>
       <div className="small stack" style={{ marginTop: 10 }}>
-        <table className="grid">
+        <table className="grid fit">
           <thead>
             <tr>
               <th>Critère</th>
@@ -190,7 +200,7 @@ function Rules() {
           <tbody>
             <tr><td>Cépage(s)</td><td>{F.grapes}</td><td>{E.grapes}</td></tr>
             <tr><td>Pays</td><td>{F.country}</td><td>{E.country}</td></tr>
-            <tr><td>Géographie (région {BAREME.geoSplit.region} + appellation {BAREME.geoSplit.appellation})</td><td>{F.geo}</td><td>{E.geo}</td></tr>
+            <tr><td>Géographie<span className="sub">région {BAREME.geoSplit.region} + appellation {BAREME.geoSplit.appellation}</span></td><td>{F.geo}</td><td>{E.geo}</td></tr>
             <tr><td>Millésime</td><td>{F.vintage}</td><td>{E.vintage}</td></tr>
             <tr><td><strong>Total</strong></td><td><strong>{F.total}</strong></td><td><strong>{E.total}</strong></td></tr>
           </tbody>
@@ -221,6 +231,7 @@ function LeaveButton({ code, onLeft }) {
         onClick={async () => {
           if (!confirm('Se déconnecter de ce téléphone ? Vos notes restent enregistrées et vous pourrez revenir en choisissant à nouveau votre nom.')) return;
           await api(`/api/t/${code}/join`, { method: 'POST', body: { action: 'leave' } });
+          forgetSoiree(code);
           onLeft();
         }}
       >
@@ -328,6 +339,11 @@ function Welcome({ tasting, count, onEnter }) {
         <button className="btn gold block welcome-cta" onClick={onEnter}>
           Entrer dans la Confrérie
         </button>
+        {tasting.phase === 'revelee' && (
+          <Link href={`/t/${tasting.code}/resultats`} className="btn ghost block welcome-cta" style={{ marginTop: 10, color: 'var(--creme)', borderColor: 'var(--or)' }}>
+            Voir les résultats
+          </Link>
+        )}
         {count > 0 && <p className="welcome-count">{count} {count > 1 ? 'confrères inscrits' : 'confrère inscrit'}</p>}
       </section>
       <section className="page stack">

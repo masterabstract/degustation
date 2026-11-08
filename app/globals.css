@@ -228,12 +228,12 @@ input[type='range'].note-range { width: 100%; margin-top: 14px; accent-color: va
 
 /* ---------- Onglets ---------- */
 .tabs {
-  display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;
+  display: flex; flex-wrap: wrap; gap: 4px; scrollbar-width: none;
   background: var(--papier); border: 1px solid var(--trait); border-radius: 12px; padding: 4px;
 }
 .tabs::-webkit-scrollbar { display: none; }
 .tabs button {
-  flex: 1 0 auto; min-height: 42px; padding: 8px 14px; border: 0; border-radius: 9px;
+  flex: 1 1 auto; min-height: 42px; padding: 8px 10px; border: 0; border-radius: 9px;
   background: transparent; font-weight: 700; font-size: 0.92rem; color: var(--taupe); cursor: pointer; white-space: nowrap;
 }
 .tabs button[aria-selected='true'] { background: var(--lie); color: var(--creme); }
@@ -256,6 +256,13 @@ input[type='range'].note-range { width: 100%; margin-top: 14px; accent-color: va
 table.grid { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
 table.grid th, table.grid td { padding: 8px 8px; border-bottom: 1px solid var(--trait); text-align: center; white-space: nowrap; }
 table.grid th:first-child, table.grid td:first-child { text-align: left; position: sticky; left: 0; background: var(--papier); }
+/* Tableaux courts qui doivent tenir dans la largeur du téléphone (barème, millésimes) */
+table.grid.fit { table-layout: auto; }
+table.grid.fit th, table.grid.fit td { white-space: normal; padding: 7px 5px; overflow-wrap: anywhere; }
+table.grid.fit th:first-child, table.grid.fit td:first-child { position: static; }
+table.grid.fit th { font-size: 0.8rem; line-height: 1.25; vertical-align: bottom; }
+table.grid .sub { display: block; font-size: 0.78rem; color: var(--taupe); }
+.panel.flush.table-wrap { overflow-x: auto; }
 .dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--trait-fort); }
 .dot.half { background: linear-gradient(90deg, var(--or) 50%, transparent 50%); border-color: var(--or); }
 .dot.full { background: var(--vert); border-color: var(--vert); }
@@ -294,11 +301,11 @@ table.grid th:first-child, table.grid td:first-child { text-align: left; positio
   padding: 48px 20px 40px;
   border-bottom: 3px solid var(--or);
 }
-.hero-inner { max-width: 640px; margin: 0 auto; }
+.hero-inner { max-width: 640px; margin: 0 auto; text-align: center; display: flex; flex-direction: column; align-items: center; }
 .hero h1 { font-family: var(--serif); font-weight: 600; font-size: 2.6rem; line-height: 1.05; margin: 18px 0 10px; }
 .hero p { color: var(--or-clair); font-size: 1.05rem; max-width: 34ch; }
 .capsule-row { display: flex; gap: 10px; }
-.hero-logo { display: block; width: min(200px, 52vw); height: auto; margin: -16px 0 0 -8px; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35)); }
+.hero-logo { display: block; width: min(230px, 62vw); height: auto; margin: -20px auto 0; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35)); }
 
 /* ---------- Accueil des participants ---------- */
 .welcome-hero {
@@ -337,7 +344,9 @@ table.grid th:first-child, table.grid td:first-child { text-align: left; positio
 }
 .welcome-steps strong { color: var(--lie); }
 .welcome-steps span { color: var(--taupe); font-size: 0.93rem; }
-.join-logo { width: 96px; height: 96px; align-self: center; margin-bottom: -6px; }
+.resume-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-top: 12px; padding-bottom: 12px; text-decoration: none; }
+.resume-sub { font-size: 0.8rem; font-weight: 500; opacity: 0.8; }
+.join-logo { display: block; width: 96px; height: 96px; margin: 0 auto -6px; }
 @keyframes welcome-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .welcome-logo { animation: none; } }
 .capsule-row .capsule:nth-child(2) { opacity: 0.8; }

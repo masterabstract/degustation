@@ -21,8 +21,8 @@ export async function GET() {
   }
   const photo = process.env.ANTHROPIC_API_KEY ? 'activée' : 'désactivée (ANTHROPIC_API_KEY absente, saisie manuelle uniquement)';
   return json({
-    ok: true,
-    message: missing.length ? 'Base de données connectée. Attention : ORGANIZER_PASSWORD n’est pas défini.' : 'Tout fonctionne : base de données connectée et configuration complète.',
+    ok: !missing.length,
+    message: missing.length ? 'Base de données connectée, mais ORGANIZER_PASSWORD n’est pas défini sur Vercel : la création de soirée est bloquée tant qu’il manque.' : 'Tout fonctionne : base de données connectée et configuration complète.',
     photo: `Lecture des étiquettes par photo : ${photo}.`,
   });
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api, usePolling, Band, Notice, Capsule, Chips, Loading, fmtDate } from './ui';
 import BottleForm from './BottleForm';
 import QrCode from './QrCode';
+import { rememberSoiree } from '@/lib/memo';
 
 const PHASE_LABEL = {
   preparation: 'En préparation',
@@ -55,6 +56,10 @@ export default function AdminApp({ code }) {
     4000,
     [authed, code]
   );
+  const orgName = data?.tasting?.name;
+  useEffect(() => {
+    if (orgName) rememberSoiree({ code, name: orgName, role: 'organisateur' });
+  }, [code, orgName]);
 
   async function act(action, payload = {}, okMsg) {
     setBusy(true);
@@ -117,9 +122,40 @@ export default function AdminApp({ code }) {
 function AdminLogin({ code, error: initialError, onDone }) {
   const [key, setKey] = useState('');
   const [error, setError] = useState(initialError);
+  const [me, setMe] = useState(undefined); // participant connecté sur ce téléphone ?
+  const [showKey, setShowKey] = useState(false);
+  useEffect(() => {
+    api(`/api/t/${code}`)
+      .then((d) => setMe(d.me || null))
+      .catch(() => setMe(null));
+  }, [code]);
+  if (me === undefined) return <Loading />;
+
+  // Un participant arrivé ici par erreur : l'espace est réservé, on le renvoie vers sa soirée.
+  if (me && !showKey) {
+    return (
+      <main>
+        <Band title="Espace réservé" sub={`Soirée ${code}`} />
+        <div className="page stack">
+          <div className="panel stack center">
+            <img src="/logo.webp" alt="" width={110} height={110} className="join-logo" />
+            <h2>Réservé à l’organisateur</h2>
+            <p className="muted">Cet espace sert à piloter la soirée. Vos vins, vos fiches et vos pronostics vous attendent dans votre espace, {me.name}.</p>
+            <Link href={`/t/${code}`} className="btn block">
+              Retour à ma soirée
+            </Link>
+          </div>
+          <button type="button" className="linklike small" style={{ alignSelf: 'center' }} onClick={() => setShowKey(true)}>
+            Je suis l’organisateur
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main>
-      <Band title="Espace organisateur" sub={`Soirée ${code}`} back="/" />
+      <Band title="Espace organisateur" sub={`Soirée ${code}`} back={me ? `/t/${code}` : '/'} />
       <form
         className="page stack"
         onSubmit={async (e) => {

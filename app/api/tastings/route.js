@@ -8,7 +8,15 @@ export const dynamic = 'force-dynamic';
 export const POST = route(async (req) => {
   const b = await body(req);
 
-  if (organizerPasswordOk(b.password) === false) throw new HttpError(403, 'Mot de passe organisateur incorrect.');
+  // L'espace organisateur est réservé : le mot de passe ORGANIZER_PASSWORD est exigé.
+  // (Sans mot de passe défini, la création n'est permise qu'en local, jamais sur le site en ligne.)
+  const ok = organizerPasswordOk(b.password);
+  if (ok === null && process.env.NODE_ENV === 'production') throw new HttpError(403, 'Aucun mot de passe organisateur n’est défini sur le site (variable ORGANIZER_PASSWORD dans Vercel) : la création de soirée est désactivée.');
+  if (ok === false) {
+    await new Promise((r) => setTimeout(r, 700)); // freine les essais au hasard
+    throw new HttpError(403, 'Mot de passe organisateur incorrect.');
+  }
+  if (b.check === true) return json({ ok: true }); // simple vérification avant d'afficher le formulaire
 
   const name = cleanText(b.name, 80);
   if (!name) throw new HttpError(400, 'Donnez un nom à la soirée.');

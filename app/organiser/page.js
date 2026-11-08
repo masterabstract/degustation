@@ -13,6 +13,7 @@ export default function Organiser() {
   const [error, setError] = useState(null);
   const [created, setCreated] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
@@ -43,7 +44,7 @@ export default function Organiser() {
             <h2>Votre lien organisateur</h2>
             <p>
               Ce lien secret vous permet de revenir dans l’espace organisateur depuis n’importe quel appareil.
-              <strong> Gardez-le pour vous</strong> : il donne accès aux bouteilles cachées.
+              <strong> Gardez-le pour vous</strong> : il permet de piloter la soirée (lancement, ordre de service, révélation). Il ne montre pas le contenu des bouteilles.
             </p>
             <input className="input small" readOnly value={adminUrl} onFocus={(e) => e.target.select()} aria-label="Lien organisateur" />
             <button
@@ -63,6 +64,47 @@ export default function Organiser() {
             Ouvrir l’espace organisateur
           </Link>
         </div>
+      </main>
+    );
+  }
+
+  if (!unlocked) {
+    return (
+      <main>
+        <Band title="Espace organisateur" back="/" />
+        <form
+          className="page stack"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            setError(null);
+            try {
+              await api('/api/tastings', { method: 'POST', body: { check: true, password } });
+              setUnlocked(true);
+            } catch (err) {
+              setError(err.message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <div className="panel stack center">
+            <img src="/logo.webp" alt="" width={110} height={110} className="join-logo" />
+            <h2>Réservé à l’organisateur</h2>
+            <p className="muted">Les participants n’ont rien à faire ici : ils rejoignent la soirée avec le code ou le lien reçu.</p>
+            <label className="field" style={{ textAlign: 'left' }}>
+              <span>Mot de passe organisateur</span>
+              <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" autoFocus />
+            </label>
+            <Notice kind="error">{error}</Notice>
+            <button className="btn block" disabled={busy || !password}>
+              {busy ? 'Vérification…' : 'Entrer'}
+            </button>
+          </div>
+          <Link href="/" className="linklike small" style={{ alignSelf: 'center' }}>
+            Je suis participant : retour à l’accueil
+          </Link>
+        </form>
       </main>
     );
   }
@@ -93,13 +135,6 @@ export default function Organiser() {
             />
           </label>
           <p className="tiny muted">Facultatif ici : vous pourrez en ajouter ou en retirer ensuite.</p>
-        </div>
-        <div className="panel stack">
-          <label className="field">
-            <span>Mot de passe organisateur</span>
-            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
-          </label>
-          <p className="tiny muted">Celui que vous avez défini lors de la mise en ligne du site. Il empêche des inconnus de créer des soirées.</p>
         </div>
         <Notice kind="error">{error}</Notice>
         <button className="btn block" disabled={busy || !name.trim()}>
