@@ -225,7 +225,7 @@ ANTHROPIC_API_KEY (facultatif) :</div>
   </ol>
   <h3>Les bouteilles</h3>
   <ol>
-    <li>Chaque invité ouvre le lien, touche son prénom, puis <span class="btn">Ajouter ma bouteille</span>. Il renseigne, dans cet ordre : domaine, château ou maison, appellation, cépage, région, pays, couleur, puis le nom de la cuvée, le millésime et un petit mot pour la révélation. Seuls le domaine et le millésime (ou « Non millésimé ») sont obligatoires ; la cuvée et le petit mot sont facultatifs.</li>
+    <li>Chaque invité ouvre le lien, touche son prénom, puis <span class="btn">Ajouter ma bouteille</span>. Il renseigne : domaine (obligatoire), appellation, <strong>cépages avec leurs pourcentages</strong> (obligatoire ; pour un assemblage, le total doit faire 100 %, ou laissez les % vides pour des parts égales), région, <strong>pays</strong> (obligatoire : il décide du barème, 20 points pour un vin français, 23 pour un vin étranger), couleur, cuvée, millésime (obligatoire, ou « Non millésimé ») et un petit mot. Pour un vin étranger, deux champs de plus apparaissent : sous-région ou vallée, et grande zone ou province. Un champ facultatif permet d’ajouter d’autres noms acceptés pour l’appellation (ex. « St-Jo » pour Saint-Joseph). Ces réponses sont les bonnes réponses du concours : dès qu’un participant a noté ou deviné la bouteille, elles ne peuvent plus être modifiées.</li>
     <li><strong>Saisie assistée</strong> : en tapant les premières lettres de l’appellation (« gev »), le site propose « Gevrey-Chambertin ». En la touchant, la région, le pays, le cépage et la couleur se remplissent tout seuls, et restent modifiables. Plus de 300 appellations sont connues (France et grands vignobles du monde). Les accents ne sont pas nécessaires : « cote rot » trouve « Côte-Rôtie ». Même aide pour les cépages et les régions, et dans les pronostics.</li>
     <li>Dans votre onglet <strong>Bouteilles</strong>, vous voyez seulement combien de bouteilles chacun a enregistrées. Un « Aucune » en rouge signale quelqu’un qui n’a pas encore saisi la sienne.</li>
     <li>Les numéros sont attribués au hasard automatiquement au lancement de la dégustation. Si vous voulez que chacun étiquette sa bouteille avant de commencer, cliquez sur <span class="btn">Tirer les numéros au sort</span> dès que les premières bouteilles sont enregistrées. Chaque invité lit alors sur son téléphone « Masquez la bouteille et écrivez dessus : n°7 ». Il masque sa bouteille (chaussette, papier aluminium), y écrit son numéro, et la pose avec les autres.</li>
@@ -241,14 +241,22 @@ ANTHROPIC_API_KEY (facultatif) :</div>
   <h3>La révélation</h3>
   <ol>
     <li>Téléchargez d’abord une sauvegarde (onglet Soirée, <span class="btn">Télécharger la sauvegarde</span>).</li>
-    <li>Onglet <strong>Révélation</strong> : vérifiez que tout le monde a fini, puis touchez <span class="btn">Révéler vin par vin</span> et confirmez. Dès cet instant, toutes les fiches et tous les pronostics sont verrouillés : c’est définitif.</li>
+    <li>Onglet <strong>Révélation</strong> : vérifiez que tout le monde a fini, puis touchez <span class="btn">Commencer la révélation</span> et confirmez. Dès cet instant, toutes les fiches et tous les pronostics sont verrouillés : c’est définitif.</li>
     <li>Les invités touchent <span class="btn">Suivre la révélation</span> sur leur téléphone. Vous pouvez aussi ouvrir l’écran de révélation sur une télévision ou un ordinateur.</li>
-    <li>Touchez <span class="btn">Révéler le vin suivant</span> autant de fois qu’il y a de vins. Le site révèle <strong>du moins bien noté au mieux noté</strong> : le meilleur vin arrive en dernier. Sur chaque téléphone, un compte à rebours de 3 secondes précède chaque vin, qui apparaît avec son domaine, son appellation, sa note moyenne, son rang, son propriétaire et son petit mot. Vous pouvez aussi choisir vous-même le numéro à révéler.</li>
-    <li>À la fin, touchez <span class="btn">Afficher les classements et le podium</span> : le meilleur vin et le podium des dégustateurs s’affichent sur tous les téléphones, avec ensuite les classements complets, les commentaires et le résumé de la soirée, à copier pour WhatsApp.</li>
-    <li>Pas le temps pour le suspense ? Le bouton <span class="btn">Tout révéler d’un coup</span> reste disponible.</li>
+    <li>Touchez <span class="btn">Révéler la bouteille suivante</span> autant de fois qu’il y a de bouteilles. Le site révèle <strong>du moins bien noté au mieux noté</strong> : le meilleur vin arrive en dernier. Sur chaque téléphone, un compte à rebours précède chaque bouteille, qui apparaît avec son domaine, son appellation, sa note moyenne, son propriétaire, son petit mot, <strong>les pronostics et les points de chacun sur ce vin</strong> (avec le détail du calcul), et le <strong>classement provisoire</strong>. Vous pouvez aussi choisir vous-même la bouteille à révéler.</li>
+    <li>Quand toutes les bouteilles sont révélées, touchez <span class="btn">Afficher les classements et le podium</span> : le meilleur vin et le podium des dégustateurs s’affichent sur tous les téléphones, puis les classements complets, les commentaires et le résumé de la soirée.</li>
+
     <li>Après la révélation, vous voyez enfin les bouteilles dans l’onglet Bouteilles, et pouvez corriger une faute de frappe : les classements se recalculent. Téléchargez alors la sauvegarde finale, complète.</li>
   </ol>
-  <div class="box tip"><strong>Règles de calcul</strong> : la note d’un vin est la moyenne des notes sur 20, sans celle de la personne qui l’a apporté. Les pronostics sont notés <strong>sur 20 points par vin</strong>, et les points sont affichés à côté de chaque champ :
+  <div class="box tip"><strong>Barème du concours</strong> : la note d’un vin (sur 20) est la moyenne des notes des dégustateurs, sans celle de son propriétaire. Les pronostics sont notés <strong>sur 20 points pour un vin français et 23 pour un vin étranger</strong> :
+    <ul>
+      <li><strong>Cépages (10 points)</strong> : monocépage exact 10 ; assemblage, chaque cépage trouvé rapporte sa part (70 % de Merlot = 7 points) ; moins 1 point par cépage cité à tort, sans descendre sous 0.</li>
+      <li><strong>Pays</strong> : 2 points pour un vin français, 5 pour un vin étranger.</li>
+      <li><strong>Géographie (5 points)</strong> : vin français, appellation exacte 5, sinon bonne région 3. Vin étranger, appellation ou indication exacte (DOCG, DOC, DO, AVA…) 5, sous-région ou vallée 4, grande région 3, grande zone ou province 2. Seul le meilleur niveau trouvé compte.</li>
+      <li><strong>Millésime (3 points)</strong> : année exacte 3, puis on perd des points à chaque année d’écart : 1 point par an pour 2020 et après, 0,75 pour les années 2010, 0,6 pour 2000, 0,5 pour 1990, 0,3 pour 1980, 0,25 pour 1970, 0,2 pour 1960 et avant.</li>
+      <li><strong>Classement</strong> : au pourcentage des points possibles (personne ne joue sur ses propres bouteilles). Départage : cépages, puis géographie, puis pays, puis millésime.</li>
+    </ul>
+    Accents, majuscules, tirets, mentions DOCG, AOC ou 1er cru, et synonymes courants (Shiraz et Syrah, Garnacha et Grenache…) sont ignorés. Le détail du calcul de chaque point est visible dans les résultats et dans la sauvegarde.</div>
     <ul>
       <li>Appellation : 5 points.</li>
       <li>Cépages : 4 points si tout est juste (tous les cépages trouvés, aucun faux) ; 3 points si au moins un est juste, puis 1 point en moins par cépage faux (jamais en dessous de 0). Exemple : vin Syrah et Grenache, pronostic « Syrah, Merlot » = 2 points.</li>
@@ -285,7 +293,7 @@ ANTHROPIC_API_KEY (facultatif) :</div>
   <h2>Mettre à jour un site déjà en ligne</h2>
   <p>Quand je vous envoie une nouvelle version :</p>
   <ol>
-    <li>Si l’archive contient un fichier <code>supabase/mise-a-jour-v2.sql</code> (ou un numéro plus récent) que vous n’avez pas encore lancé : ouvrez-le dans le Bloc-notes, copiez tout, collez-le dans Supabase &gt; <span class="btn">SQL Editor</span>, puis <span class="btn">Run</span>.</li>
+    <li>Si l’archive contient des fichiers <code>supabase/mise-a-jour-v2.sql</code>, <code>v3</code>, <code>v4</code>… que vous n’avez pas encore lancés, lancez-les dans l’ordre : ouvrez chacun dans le Bloc-notes, copiez tout, collez-le dans Supabase &gt; <span class="btn">SQL Editor</span>, puis <span class="btn">Run</span>.</li>
     <li>Décompressez la nouvelle archive. Sur GitHub, dans votre dépôt : <span class="btn">Add file</span> &gt; <span class="btn">Upload files</span>.</li>
     <li>Sélectionnez <strong>tout le contenu</strong> du dossier décompressé (<kbd>Ctrl</kbd> + <kbd>A</kbd>) et <strong>faites-le glisser</strong> dans la page (pas le lien « choose your files », qui oublie les dossiers). Les anciens fichiers sont remplacés.</li>
     <li><span class="btn">Commit changes</span>. Vercel reconstruit le site tout seul en 1 à 2 minutes.</li>

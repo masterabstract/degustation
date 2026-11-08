@@ -61,6 +61,10 @@ create table if not exists public.bottles (
   grapes      text,                                 -- cépage(s)
   region      text,
   country     text,                                 -- pays
+  subregion   text,                                 -- vins étrangers : sous-région ou vallée
+  zone        text,                                 -- vins étrangers : grande zone ou province
+  grape_mix   jsonb,                                -- cépages et pourcentages [{name, pct}]
+  accepted_names text,                              -- autres noms acceptés pour l'appellation
   appellation text,
   vintage     int,                                  -- millésime (vide = non millésimé)
   price_range text,
@@ -107,7 +111,11 @@ create table if not exists public.predictions (
   unique (participant_id, bottle_id)
 );
 
--- Colonnes ajoutées dans les versions 2 et 3 (sans effet si elles existent déjà).
+-- Colonnes ajoutées dans les versions 2, 3 et 4 (sans effet si elles existent déjà).
+alter table public.bottles add column if not exists grape_mix      jsonb;
+alter table public.bottles add column if not exists subregion      text;
+alter table public.bottles add column if not exists zone           text;
+alter table public.bottles add column if not exists accepted_names text;
 alter table public.tastings add column if not exists current_number   int;
 alter table public.tastings add column if not exists served_numbers   int[] not null default '{}';
 alter table public.tastings add column if not exists revealed_numbers int[] not null default '{}';

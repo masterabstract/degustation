@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { api, Band, Notice, Capsule, Chips, Scale, NoteInput, Loading } from './ui';
 import Autocomplete from './Autocomplete';
 import { APPELLATION_OPTIONS, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
-import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE, SCORING, MAX_POINTS_PER_BOTTLE, VINTAGE_TIERS } from '@/lib/constants';
+import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
+import { BAREME, VINTAGE_DECADES } from '@/lib/bareme';
 
 const EMPTY_RATING = {
   robe: null, intensite_visuelle: null, intensite_nez: null, aromes: [], acidite: null,
@@ -256,15 +257,18 @@ export default function SheetPage({ code, number }) {
 
         {tab === 'prono' && (
           <div className="panel" style={{ marginTop: 12 }}>
-            <p className="small muted">D’après vous, quel est ce vin ? Chaque bonne réponse rapporte les points indiqués, jusqu’à {MAX_POINTS_PER_BOTTLE} points par vin. Vos pronostics restent secrets jusqu’à la révélation.</p>
-            <Crit title="Appellation" pts={`${SCORING.appellation} pts`}>
+            <p className="small muted">
+              D’après vous, quel est ce vin ? Un vin français vaut {BAREME.france.total} points, un vin étranger {BAREME.foreign.total} points. Vos pronostics restent secrets jusqu’à la révélation.
+            </p>
+            <Crit title="Appellation" pts="5 pts" hint="Appellation exacte : 5 points. Sinon, une bonne région rapporte quand même des points (champ suivant).">
               <Autocomplete
                 value={pred.appellation}
                 onChange={(v) => change('pred', { appellation: v })}
                 options={APPELLATION_OPTIONS}
                 onPick={(o) => {
                   const patch = fillFromAppellation({ ...pred, appellation: o.label }, o.label, filled.current);
-                  if (patch) change('pred', patch);
+                  if (patch) delete patch.color; // la couleur ne fait pas partie du barème
+                  if (patch && Object.keys(patch).length) change('pred', patch);
                   setAutoNote(describePatch(patch));
                 }}
                 placeholder="Tapez les premières lettres, ex : gev"
@@ -274,7 +278,11 @@ export default function SheetPage({ code, number }) {
               />
               {autoNote && <div className="autofill-note">{autoNote}</div>}
             </Crit>
-            <Crit title="Cépage" pts={`${SCORING.grapesAll} pts`} hint={`${SCORING.grapesAll} pts si tout est juste, ${SCORING.grapesSome} pts si au moins un est juste, puis ${SCORING.grapesWrongPenalty} pt en moins par cépage faux. Séparez les cépages par des virgules.`}>
+            <Crit
+              title="Cépage(s)"
+              pts={`${BAREME.france.grapes} pts`}
+              hint={`Assemblage : chaque cépage trouvé rapporte sa part (70 % de Merlot = 7 points). Moins ${BAREME.grapeWrongPenalty} point par cépage faux. Séparez les cépages par des virgules.`}
+            >
               <Autocomplete
                 multi
                 value={pred.grapes}
@@ -286,7 +294,11 @@ export default function SheetPage({ code, number }) {
                 disabled={locked}
               />
             </Crit>
-            <Crit title="Région" pts={`${SCORING.region} pts`}>
+            <Crit
+              title="Région, sous-région ou zone"
+              pts="2 à 4 pts"
+              hint="Si l’appellation est fausse : vin français, bonne région 3 points ; vin étranger, sous-région 4, grande région 3, zone ou province 2. Seul le meilleur niveau compte."
+            >
               <Autocomplete
                 value={pred.region}
                 onChange={(v) => change('pred', { region: v })}
@@ -295,13 +307,13 @@ export default function SheetPage({ code, number }) {
                   const patch = fillFromRegion({ ...pred, region: o.label }, o.label, filled.current);
                   if (patch) change('pred', patch);
                 }}
-                placeholder="Ex : Bourgogne"
+                placeholder="Ex : Bourgogne, Toscane, Napa Valley"
                 aria-label="Région"
                 maxLength={80}
                 disabled={locked}
               />
             </Crit>
-            <Crit title="Pays" pts={`${SCORING.country} pts`}>
+            <Crit title="Pays" pts={`${BAREME.france.country} ou ${BAREME.foreign.country} pts`} hint={`${BAREME.france.country} points si le vin est français, ${BAREME.foreign.country} points s’il est étranger.`}>
               <select className="input" aria-label="Pays" value={pred.country} onChange={(e) => change('pred', { country: e.target.value })} disabled={locked}>
                 <option value="">Choisir un pays</option>
                 {COUNTRIES.map((x) => (
@@ -309,10 +321,7 @@ export default function SheetPage({ code, number }) {
                 ))}
               </select>
             </Crit>
-            <Crit title="Couleur" pts={`${SCORING.color} pts`}>
-              <Chips options={COLORS} value={pred.color} onChange={(v) => change('pred', { color: v })} disabled={locked} />
-            </Crit>
-            <Crit title="Millésime" pts={`${SCORING.vintage} pts`} hint="Plus le vin est ancien, plus la marge d’erreur est grande (voir le barème ci-dessous).">
+            <Crit title="Millésime" pts={`${BAREME.france.vintage} pts`} hint="Année exacte : 3 points. Ensuite on perd des points à chaque année d’écart, moins vite pour les vins anciens (tableau ci-dessous).">
               <div className="row">
                 <input
                   className="input grow"
@@ -399,23 +408,22 @@ function safeDel(k) {
 }
 
 export function VintageTable() {
+  const f = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
   return (
     <table className="grid tiny" style={{ marginTop: 10 }}>
       <thead>
         <tr>
           <th>Millésime réel</th>
-          <th>4 pts</th>
-          <th>2 pts</th>
-          <th>1 pt</th>
+          <th>Par année d’écart</th>
+          <th>0 point à partir de</th>
         </tr>
       </thead>
       <tbody>
-        {VINTAGE_TIERS.map((t) => (
-          <tr key={t.label}>
-            <td>{t.label}</td>
-            {t.margins.map((m, i) => (
-              <td key={i}>{m === 0 ? 'exact' : `± ${m} an${m > 1 ? 's' : ''}`}</td>
-            ))}
+        {VINTAGE_DECADES.map((d) => (
+          <tr key={d.label}>
+            <td>{d.label}</td>
+            <td>−{f(BAREME.france.vintage / d.zeroAt)} pt</td>
+            <td>{d.zeroAt} ans d’écart</td>
           </tr>
         ))}
       </tbody>

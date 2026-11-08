@@ -2,6 +2,7 @@ import { db, unwrap } from '@/lib/db';
 import { route } from '@/lib/http';
 import { requireAdmin } from '@/lib/auth';
 import { computeResults } from '@/lib/scoring';
+import { BAREME, VINTAGE_DECADES } from '@/lib/bareme';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,7 @@ export const GET = route(async (_req, { code }) => {
     bottles: safeBottles,
     ratings,
     predictions,
+    bareme: { ...BAREME, millesime: VINTAGE_DECADES, classement: 'pourcentage des points possibles ; départage cépages, géographie, pays, millésime' },
     results: revealed ? computeResults({ tasting, participants: clean, bottles, ratings, predictions }) : null,
   };
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');

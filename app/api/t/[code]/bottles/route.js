@@ -1,7 +1,7 @@
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body } from '@/lib/http';
 import { requireParticipant } from '@/lib/auth';
-import { bottleFields, numberMissing, SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
+import { bottleFields, numberMissing, bottleInPlay, SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,14 +21,13 @@ export const POST = route(async (req, { code }) => {
     // Pendant la dégustation, la bouteille reçoit tout de suite le numéro suivant.
     if (tasting.phase === 'degustation') await numberMissing(tasting.id);
   } else if (b.action === 'update') {
+    if (tasting.phase === 'revelee') throw new HttpError(403, 'Les bouteilles sont révélées.');
+    if (tasting.phase === 'degustation' && (await bottleInPlay(b.id))) throw new HttpError(403, 'Des participants ont déjà noté ou deviné cette bouteille : ses réponses ne peuvent plus changer.');
     const r = unwrap(await mine(db().from('bottles').update(bottleFields(b.bottle || {})).eq('id', b.id)).select('id'));
     if (!r.length) throw new HttpError(404, 'Bouteille introuvable.');
   } else if (b.action === 'delete') {
     if (tasting.phase === 'revelee') throw new HttpError(403, 'Suppression impossible après la révélation.');
-    if (tasting.phase === 'degustation') {
-      const used = unwrap(await db().from('ratings').select('id').eq('bottle_id', b.id).limit(1));
-      if (used.length) throw new HttpError(403, 'Cette bouteille a déjà été notée : elle ne peut plus être retirée.');
-    }
+    if (tasting.phase === 'degustation' && (await bottleInPlay(b.id))) throw new HttpError(403, 'Des participants ont déjà noté ou deviné cette bouteille : elle ne peut plus être retirée.');
     unwrap(await mine(db().from('bottles').delete().eq('id', b.id)));
   } else {
     throw new HttpError(400, 'Action inconnue.');

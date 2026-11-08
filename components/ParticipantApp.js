@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { api, usePolling, Band, Notice, Capsule, Loading, fmtDate } from './ui';
-import { SCORING, MAX_POINTS_PER_BOTTLE } from '@/lib/constants';
+import { BAREME } from '@/lib/bareme';
 import BottleForm from './BottleForm';
 import { VintageTable } from './SheetPage';
 
@@ -153,31 +153,40 @@ function WineList({ data, code }) {
 }
 
 function Rules() {
+  const F = BAREME.france;
+  const E = BAREME.foreign;
   return (
     <details className="panel">
       <summary>Règles et barème des pronostics</summary>
-      <div className="small" style={{ marginTop: 10 }}>
-        <p>Pour chaque vin, vous gagnez :</p>
-        <div className="breakdown">
-          <strong>{SCORING.appellation} pts</strong>
-          <span>appellation exacte</span>
-          <strong>{SCORING.grapesAll} pts</strong>
-          <span>
-            cépages tous justes ; {SCORING.grapesSome} pts si au moins un est juste, puis {SCORING.grapesWrongPenalty} pt en moins par cépage faux
-          </span>
-          <strong>{SCORING.vintage} pts</strong>
-          <span>millésime, avec une marge plus large pour les vins anciens (tableau ci-dessous)</span>
-          <strong>{SCORING.region} pts</strong>
-          <span>région exacte</span>
-          <strong>{SCORING.country} pts</strong>
-          <span>pays exact</span>
-          <strong>{SCORING.color} pts</strong>
-          <span>couleur exacte</span>
-        </div>
+      <div className="small stack" style={{ marginTop: 10 }}>
+        <table className="grid">
+          <thead>
+            <tr>
+              <th>Critère</th>
+              <th>Vin français</th>
+              <th>Vin étranger</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Cépage(s)</td><td>{F.grapes}</td><td>{E.grapes}</td></tr>
+            <tr><td>Pays</td><td>{F.country}</td><td>{E.country}</td></tr>
+            <tr><td>Appellation / géographie</td><td>{F.geo}</td><td>{E.geo}</td></tr>
+            <tr><td>Millésime</td><td>{F.vintage}</td><td>{E.vintage}</td></tr>
+            <tr><td><strong>Total</strong></td><td><strong>{F.total}</strong></td><td><strong>{E.total}</strong></td></tr>
+          </tbody>
+        </table>
+        <p>
+          <strong>Cépages</strong> : un monocépage exact rapporte 10 points. Pour un assemblage, chaque cépage trouvé rapporte sa part (70 % de Merlot = 7 points), et chaque cépage cité à tort retire {BAREME.grapeWrongPenalty} point.
+        </p>
+        <p>
+          <strong>Géographie</strong> : vin français, appellation exacte 5 points, sinon bonne région 3 points. Vin étranger, appellation ou indication exacte 5, sous-région ou vallée 4, grande région 3, grande zone ou province 2. Les niveaux ne se cumulent pas : seul le meilleur compte.
+        </p>
+        <p>
+          <strong>Millésime</strong> : 3 points pour l’année exacte, puis des points en moins à chaque année d’écart, moins vite pour les vins anciens :
+        </p>
         <VintageTable />
-        <p style={{ marginTop: 10 }}>
-          Soit {MAX_POINTS_PER_BOTTLE} points maximum par vin. Votre propre bouteille ne compte ni dans votre score de pronostics, ni dans la note moyenne du vin.
-          Les pronostics sont verrouillés au moment de la révélation.
+        <p>
+          <strong>Classement</strong> : au pourcentage des points possibles, car personne ne joue sur ses propres bouteilles. En cas d’égalité : cépages, puis géographie, puis pays, puis millésime. Les accents, majuscules, tirets et synonymes courants (Shiraz et Syrah, DOCG, 1er cru…) ne comptent pas.
         </p>
       </div>
     </details>

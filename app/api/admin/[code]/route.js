@@ -185,6 +185,8 @@ export const POST = route(async (req, { code }) => {
     case 'finishReveal': {
       if (tasting.phase !== 'revelation') throw new HttpError(400, 'La révélation vin par vin n’a pas commencé.');
       const all = unwrap(await one(db().from('bottles').select('number'))).map((x) => x.number).filter(Boolean);
+      const left = all.filter((n) => !(tasting.revealed_numbers || []).includes(n));
+      if (left.length) throw new HttpError(400, `Révélez d’abord les ${left.length} bouteille${left.length > 1 ? 's' : ''} restante${left.length > 1 ? 's' : ''}.`);
       unwrap(await db().from('tastings').update({ phase: 'revelee', revealed_at: new Date().toISOString(), revealed_numbers: all }).eq('id', T)); 
       break;
     }
@@ -192,11 +194,6 @@ export const POST = route(async (req, { code }) => {
     case 'pause': // retour en préparation (avant la révélation uniquement)
       if (revealed || tasting.phase === 'revelation') throw new HttpError(400, 'La révélation est définitive.');
       unwrap(await db().from('tastings').update({ phase: 'preparation' }).eq('id', T));
-      break;
-    case 'reveal': // tout révéler d'un coup
-      if (!['degustation', 'revelation'].includes(tasting.phase)) throw new HttpError(400, 'La dégustation doit être en cours pour être révélée.');
-      if (b.confirm !== true) throw new HttpError(400, 'Confirmation manquante.');
-      unwrap(await db().from('tastings').update({ phase: 'revelee', revealed_at: new Date().toISOString() }).eq('id', T));
       break;
     case 'deleteTasting': {
       // Suppression définitive de la soirée et de tout son contenu (ex : soirée de test).

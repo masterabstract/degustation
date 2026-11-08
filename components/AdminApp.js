@@ -599,16 +599,16 @@ function TabReveal({ data, act, busy, code }) {
         <div className="panel stack">
           <h2>Révélation vin par vin</h2>
           <p className="small">
-            {done.length} vin{done.length > 1 ? 's' : ''} révélé{done.length > 1 ? 's' : ''} sur {bottles.length}. Chaque révélation s’affiche sur tous les téléphones après un compte à rebours.
+            {done.length} bouteille{done.length > 1 ? 's' : ''} révélée{done.length > 1 ? 's' : ''} sur {bottles.length}. Chaque révélation s’affiche sur tous les téléphones après un compte à rebours, avec les points de chacun et le classement provisoire.
           </p>
           {left.length > 0 ? (
             <>
-              <button className="btn gold block" disabled={busy} onClick={() => act('revealNext', {}, 'Vin révélé.')}>
-                Révéler le vin suivant
+              <button className="btn gold block" disabled={busy} onClick={() => act('revealNext', {}, 'Bouteille révélée.')}>
+                Révéler la bouteille suivante
               </button>
               <p className="tiny muted center">Du moins bien noté au mieux noté : le meilleur vin est révélé en dernier.</p>
               <details>
-                <summary className="small">Ou choisir le numéro à révéler</summary>
+                <summary className="small">Ou choisir la bouteille à révéler</summary>
                 <div className="serve-grid" style={{ marginTop: 10 }}>
                   {left.map((b) => (
                     <button key={b.id} type="button" className="serve-btn" disabled={busy} aria-label={`Révéler le vin n°${b.number}`} onClick={() => act('revealNumber', { number: b.number }, `Vin n°${b.number} révélé.`)}>
@@ -621,9 +621,11 @@ function TabReveal({ data, act, busy, code }) {
           ) : (
             <Notice kind="ok">Tous les vins sont révélés. Place au podium !</Notice>
           )}
-          <button className={`btn ${left.length ? 'ghost' : 'gold'} block`} disabled={busy} onClick={() => act('finishReveal', {}, 'Classements affichés.')}>
-            {left.length ? 'Tout révéler et afficher les classements' : 'Afficher les classements et le podium'}
-          </button>
+          {left.length === 0 && (
+            <button className="btn gold block" disabled={busy} onClick={() => act('finishReveal', {}, 'Classements affichés.')}>
+              Afficher les classements et le podium
+            </button>
+          )}
           <Link className="small center" href={`/t/${code}/resultats`}>
             Ouvrir l’écran de révélation (à projeter sur une télévision)
           </Link>
@@ -657,25 +659,16 @@ function TabReveal({ data, act, busy, code }) {
       {!armed ? (
         <>
           <button className="btn gold block" onClick={() => setArmed('step')}>
-            Révéler vin par vin
+            Commencer la révélation
           </button>
-          <p className="tiny muted center">Recommandé : un compte à rebours sur chaque téléphone, du moins bien noté au meilleur, puis le podium.</p>
-          <button className="btn ghost block" onClick={() => setArmed('all')}>
-            Tout révéler d’un coup
-          </button>
+          <p className="tiny muted center">Les bouteilles sont révélées une par une, avec un compte à rebours sur chaque téléphone, les points de chacun et le classement provisoire, puis le podium.</p>
         </>
       ) : (
         <div className="stack">
           <Notice kind="info">Tout le monde a terminé ? Une fois confirmé, plus aucune modification n’est possible.</Notice>
-          {armed === 'step' ? (
-            <button className="btn danger block" disabled={busy} onClick={async () => (await act('startReveal', { confirm: true }, 'La révélation commence !')) && setArmed(null)}>
-              Confirmer : commencer la révélation
-            </button>
-          ) : (
-            <button className="btn danger block" disabled={busy} onClick={() => act('reveal', { confirm: true }, 'Révélation effectuée !')}>
-              Confirmer la révélation
-            </button>
-          )}
+          <button className="btn danger block" disabled={busy} onClick={async () => (await act('startReveal', { confirm: true }, 'La révélation commence !')) && setArmed(null)}>
+            Confirmer : commencer la révélation
+          </button>
           <button className="btn ghost block" onClick={() => setArmed(null)}>
             Annuler
           </button>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api, Band, Notice, Capsule, Loading, fmtNote } from './ui';
-import { ITEM_MAX, MAX_POINTS_PER_BOTTLE } from '@/lib/constants';
+
 
 const TABS = [
   ['vins', 'Meilleur vin'],
@@ -12,7 +12,36 @@ const TABS = [
   ['resume', 'Résumé'],
 ];
 
-const DETAIL_LABELS = { appellation: 'Appellation', grapes: 'Cépage', vintage: 'Millésime', region: 'Région', country: 'Pays', color: 'Couleur' };
+const num = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
+const pctTxt = (x) => `${String(Math.round(x * 1000) / 10).replace('.', ',')} %`;
+
+// Détail transparent d'un score sur un vin : critère par critère, avec l'explication.
+export function ScoreDetail({ d }) {
+  const rows = [
+    ['Cépages', d.grapes, d.why.grapes],
+    [d.french ? 'Appellation' : 'Géographie', d.geo, d.why.geo],
+    ['Pays', d.country, d.why.country],
+    ['Millésime', d.vintage, d.why.vintage],
+  ];
+  return (
+    <div className="breakdown tiny" style={{ marginTop: 4 }}>
+      {rows.map(([label, c, why]) => (
+        <span key={label} style={{ display: 'contents' }}>
+          <strong style={{ whiteSpace: 'nowrap' }}>
+            {label} {num(c.pts)}/{c.max}
+          </strong>
+          <span className="muted">{why}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function guessLine(g) {
+  if (!g) return 'Pas de pronostic';
+  const v = g.vintage === 0 ? 'non millésimé' : g.vintage;
+  return [g.grapes, g.appellation, g.region, g.country, v].filter((x) => x !== null && x !== undefined && x !== '').join(' · ') || 'Pas de pronostic';
+}
 
 export default function ResultsPage({ code }) {
   const [data, setData] = useState(null);
@@ -139,18 +168,19 @@ function Tasters({ data }) {
                 {data.me?.id === t.id ? ' (vous)' : ''}
               </div>
               <div className="facts">
-                {t.max ? `${String(Math.round((t.points / t.max) * 200) / 10).replace('.', ',')}/20 de moyenne par vin · ` : ''}
-                {t.answered} pronostic{t.answered > 1 ? 's' : ''} · {t.appellations} appellation{t.appellations > 1 ? 's' : ''} trouvée{t.appellations > 1 ? 's' : ''}
+                {num(t.points)} pts sur {t.max} · {t.answered} pronostic{t.answered > 1 ? 's' : ''}
                 {t.hors_concours ? ' · hors concours' : ''}
+              </div>
+              <div className="facts tiny">
+                Cépages {num(t.byCrit.grapes.pts)}/{t.byCrit.grapes.max} · Géo {num(t.byCrit.geo.pts)}/{t.byCrit.geo.max} · Pays {num(t.byCrit.country.pts)}/{t.byCrit.country.max} · Millésime {num(t.byCrit.vintage.pts)}/{t.byCrit.vintage.max}
               </div>
             </div>
             <div className="score">
-              {t.points}
-              <small> pts</small>
+              {pctTxt(t.pct)}
             </div>
           </div>
           <button className="linklike small" style={{ marginTop: 8, marginLeft: 'calc(1.6em + 14px)' }} onClick={() => setOpen(open === t.id ? null : t.id)}>
-            {open === t.id ? 'Masquer le détail' : 'Voir le détail'}
+            {open === t.id ? 'Masquer le détail' : 'Voir le détail du calcul'}
           </button>
           {open === t.id && (
             <div style={{ marginTop: 10, marginLeft: 'calc(1.6em + 14px)' }} className="stack">
@@ -158,14 +188,14 @@ function Tasters({ data }) {
                 <div key={d.bottleId} className="row small" style={{ alignItems: 'flex-start', flexWrap: 'nowrap' }}>
                   <Capsule n={d.number} size="xs" />
                   <div className="grow">
-                    <strong>{d.total}/{MAX_POINTS_PER_BOTTLE} pts</strong> <span className="muted">{numById[d.bottleId] ? wineTitle(numById[d.bottleId]) : ''}</span>
-                    <div className="tiny muted">
-                      {d.answered
-                        ? Object.keys(DETAIL_LABELS)
-                            .map((k) => `${DETAIL_LABELS[k]} ${d.detail[k]}/${ITEM_MAX[k]}`)
-                            .join(' · ')
-                        : 'Pas de pronostic'}
+                    <strong>
+                      {num(d.total)}/{d.max} pts
+                    </strong>{' '}
+                    <span className="muted">{numById[d.bottleId] ? wineTitle(numById[d.bottleId]) : ''}</span>
+                    <div className="tiny" style={{ marginTop: 2 }}>
+                      Réponse : {guessLine(d.guess)}
                     </div>
+                    {d.answered && <ScoreDetail d={d} />}
                   </div>
                 </div>
               ))}
@@ -174,7 +204,7 @@ function Tasters({ data }) {
         </div>
       ))}
       <p className="tiny muted" style={{ padding: '0 16px 14px' }}>
-        Total des points de pronostics (20 points maximum par vin), hors bouteille apportée. En cas d’égalité, le plus d’appellations trouvées passe devant. HC : hors concours.
+        Classement au pourcentage des points possibles : 20 points par vin français, 23 par vin étranger, sans compter ses propres bouteilles. Départage : cépages, puis géographie, puis pays, puis millésime. HC : hors concours.
       </p>
     </div>
   );
@@ -292,6 +322,7 @@ function LiveReveal({ data, code }) {
             <p className="muted">L’organisateur va révéler le premier vin…</p>
           </div>
         )}
+        {shownCount > 0 && data.standings?.length > 0 && <Standings list={data.standings} n={shownCount} />}
         {[...visible].reverse().map((w, i) => (
           <div key={w.id} className={`panel reveal-card ${i === 0 ? 'latest' : ''}`}>
             <div className="row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
@@ -314,6 +345,28 @@ function LiveReveal({ data, code }) {
                 )}
               </div>
             </div>
+            {i === 0 && w.scores?.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div className="section-label" style={{ marginTop: 0 }}>
+                  Les pronostics sur ce vin (sur {w.scores[0].max} points)
+                </div>
+                {w.scores.map((sc) => (
+                  <details key={sc.name} className="small" style={{ padding: '4px 0', borderTop: '1px solid var(--trait)' }}>
+                    <summary style={{ listStyle: 'none', display: 'flex', justifyContent: 'space-between', gap: 10, color: 'var(--encre)' }}>
+                      <span>
+                        <strong>{sc.name}</strong> <span className="muted tiny">{guessLine(sc.guess)}</span>
+                      </span>
+                      <strong style={{ whiteSpace: 'nowrap', color: 'var(--lie)' }}>
+                        {num(sc.total)} pts
+                      </strong>
+                    </summary>
+                    <div className="tiny muted">
+                      Cépages : {sc.why.grapes} · Géographie : {sc.why.geo} · Pays : {sc.why.country} · Millésime : {sc.why.vintage}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            )}
             {i === 0 && w.comments?.length > 0 && (
               <div style={{ marginTop: 8 }}>
                 {w.comments.slice(0, 3).map((c, k) => (
@@ -364,11 +417,45 @@ function Podium({ data, animate }) {
               <div key={i} className={`step p${i + 1}`} style={{ visibility: top[i].length ? 'visible' : 'hidden' }}>
                 <div className="medal">{i + 1}</div>
                 <div className="who">{names(top[i]) || '-'}</div>
-                <div className="pts">{top[i][0] ? `${top[i][0].points} pts` : ''}</div>
+                <div className="pts">{top[i][0] ? pctTxt(top[i][0].pct) : ''}</div>
               </div>
             ))}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// Classement provisoire, calculé uniquement sur les vins déjà révélés.
+function Standings({ list, n }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? list : list.slice(0, 3);
+  return (
+    <div className="panel">
+      <div className="row between">
+        <strong>Classement provisoire</strong>
+        <span className="tiny muted">
+          après {n} vin{n > 1 ? 's' : ''}
+        </span>
+      </div>
+      <div className="stack" style={{ marginTop: 8, gap: 6 }}>
+        {shown.map((t) => (
+          <div key={t.id} className="row between small" style={{ flexWrap: 'nowrap' }}>
+            <span>
+              <strong style={{ color: 'var(--or-fonce)', display: 'inline-block', width: '1.8em' }}>{t.rank ?? 'HC'}</strong>
+              {t.name}
+            </span>
+            <span style={{ whiteSpace: 'nowrap' }}>
+              {num(t.points)}/{t.max} · <strong>{pctTxt(t.pct)}</strong>
+            </span>
+          </div>
+        ))}
+      </div>
+      {list.length > 3 && (
+        <button className="linklike small" style={{ marginTop: 8 }} onClick={() => setAll(!all)}>
+          {all ? 'Voir le podium seulement' : `Voir les ${list.length} dégustateurs`}
+        </button>
       )}
     </div>
   );
