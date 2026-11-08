@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic';
 // Ni le contenu, ni le propriétaire d'une bouteille ne lui sont envoyés.
 async function loadState(tasting) {
   const revealed = tasting.phase === 'revelee';
-  const inReveal = tasting.phase === 'revelation';
+  // Vins révélés un par un : pendant la dégustation comme pendant la révélation finale.
+  const inReveal = tasting.phase === 'revelation' || tasting.phase === 'degustation';
   const [participants, bottles, ratings, predictions] = await Promise.all([
     db().from('participants').select('id, name, hors_concours, token_hash, joined_at').eq('tasting_id', tasting.id).order('created_at'),
     db().from('bottles').select(`${PUBLIC_COLS}, owner_id, ${SECRET_COLS}`).eq('tasting_id', tasting.id),
@@ -147,6 +148,7 @@ export const POST = route(async (req, { code }) => {
         const exists = unwrap(await one(db().from('bottles').select('id').eq('number', n)));
         if (!exists.length) throw new HttpError(400, 'Ce numéro n’existe pas.');
       }
+      if (n !== null && (tasting.revealed_numbers || []).includes(n)) throw new HttpError(400, `Le vin n°${n} est déjà révélé.`);
       const served = new Set(tasting.served_numbers || []);
       if (n !== null) served.add(n);
       unwrap(await db().from('tastings').update({ current_number: n, served_numbers: [...served].sort((a, c) => a - c) }).eq('id', T));
@@ -161,11 +163,17 @@ export const POST = route(async (req, { code }) => {
       break;
     case 'revealNext':
     case 'revealNumber': {
-      if (tasting.phase !== 'revelation') throw new HttpError(400, 'La révélation vin par vin n’a pas commencé.');
+      const during = tasting.phase === 'degustation';
+      if (!during && tasting.phase !== 'revelation') throw new HttpError(400, 'La dégustation doit être en cours.');
       const done = new Set(tasting.revealed_numbers || []);
       let n;
       if (b.action === 'revealNumber') {
         n = parseInt(b.number, 10);
+        if (during && !(tasting.served_numbers || []).includes(n)) throw new HttpError(400, `Le vin n°${n} n’a pas encore été servi : servez-le avant de le révéler.`);
+      } else if (during) {
+        // Pendant la dégustation : on révèle le vin en cours de service.
+        n = tasting.current_number;
+        if (!n) throw new HttpError(400, 'Aucun vin en cours de service : choisissez le vin à révéler.');
       } else {
         // Du moins bien noté au mieux noté : le meilleur vin est révélé en dernier.
         const q = (t, cols) => db().from(t).select(cols).eq('tasting_id', T);
@@ -176,23 +184,29 @@ export const POST = route(async (req, { code }) => {
         n = left[0]?.number;
       }
       if (!n) throw new HttpError(400, 'Tous les vins sont déjà révélés.');
+      if (done.has(n)) throw new HttpError(400, `Le vin n°${n} est déjà révélé.`);
       const exists = unwrap(await one(db().from('bottles').select('id').eq('number', n)));
       if (!exists.length) throw new HttpError(400, 'Ce numéro n’existe pas.');
       done.add(n);
-      unwrap(await db().from('tastings').update({ revealed_numbers: [...done] }).eq('id', T));
+      // Le vin révélé n'est plus « en cours de service ».
+      const patch = { revealed_numbers: [...done] };
+      if (tasting.current_number === n) patch.current_number = null;
+      unwrap(await db().from('tastings').update(patch).eq('id', T));
       break;
     }
     case 'finishReveal': {
-      if (tasting.phase !== 'revelation') throw new HttpError(400, 'La révélation vin par vin n’a pas commencé.');
+      if (tasting.phase !== 'revelation' && tasting.phase !== 'degustation') throw new HttpError(400, 'La dégustation doit être en cours.');
+      if (b.confirm !== true) throw new HttpError(400, 'Confirmation manquante.');
       const all = unwrap(await one(db().from('bottles').select('number'))).map((x) => x.number).filter(Boolean);
       const left = all.filter((n) => !(tasting.revealed_numbers || []).includes(n));
+      if (!all.length) throw new HttpError(400, 'Aucune bouteille à révéler.');
       if (left.length) throw new HttpError(400, `Révélez d’abord les ${left.length} bouteille${left.length > 1 ? 's' : ''} restante${left.length > 1 ? 's' : ''}.`);
       unwrap(await db().from('tastings').update({ phase: 'revelee', revealed_at: new Date().toISOString(), revealed_numbers: all }).eq('id', T)); 
       break;
     }
 
     case 'pause': // retour en préparation (avant la révélation uniquement)
-      if (revealed || tasting.phase === 'revelation') throw new HttpError(400, 'La révélation est définitive.');
+      if (revealed || tasting.phase === 'revelation' || (tasting.revealed_numbers || []).length) throw new HttpError(400, 'Des vins sont déjà révélés : impossible de revenir en préparation.');
       unwrap(await db().from('tastings').update({ phase: 'preparation' }).eq('id', T));
       break;
     case 'deleteTasting': {

@@ -27,7 +27,7 @@ export const GET = route(async (_req, { code }) => {
     bottles: safeBottles,
     ratings,
     predictions,
-    bareme: { ...BAREME, millesime: VINTAGE_DECADES, classement: 'pourcentage des points possibles ; départage cépages, géographie, pays, millésime' },
+    bareme: { ...BAREME, millesime: VINTAGE_DECADES, classement: 'note globale sur 20 = pourcentage des points possibles x 20 ; départage cépages, géographie, pays, millésime' },
     results: revealed ? computeResults({ tasting, participants: clean, bottles, ratings, predictions }) : null,
   };
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');

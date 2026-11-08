@@ -10,10 +10,12 @@ export const GET = route(async (_req, { code }) => {
   const tasting = await getTasting(code);
   const me = await getParticipant(tasting);
   const admin = await isAdmin(tasting);
-  const live = tasting.phase === 'revelation';
+  // Les vins sont révélés un par un pendant la dégustation : dès le premier vin révélé,
+  // les résultats « en direct » (vins révélés seulement) sont visibles.
+  const live = tasting.phase === 'revelation' || (tasting.phase === 'degustation' && (tasting.revealed_numbers || []).length > 0);
   if (tasting.phase !== 'revelee' && !live) {
     if (!me && !admin) throw new HttpError(401, 'Rejoignez la dégustation pour voir les résultats.');
-    throw new HttpError(403, 'Les résultats seront visibles après la révélation.');
+    throw new HttpError(403, 'Les résultats apparaîtront dès la révélation du premier vin.');
   }
   // Après la révélation, plus rien n'est secret : les résultats restent
   // consultables à tout moment, depuis les archives, sans avoir à se reconnecter.
@@ -35,7 +37,8 @@ export const GET = route(async (_req, { code }) => {
     // dans l'ordre de leur révélation, avec les points de chacun sur ces vins
     // et le classement provisoire calculé uniquement sur ces vins.
     const order = tasting.revealed_numbers || [];
-    const shown = order.map((n) => results.wines.find((w) => w.number === n)).filter(Boolean);
+    // (le rang d'un vin parmi tous les vins n'est pas envoyé : il trahirait les vins non révélés)
+    const shown = order.map((n) => results.wines.find((w) => w.number === n)).filter(Boolean).map(({ rank, ...w }) => w);
     const revealedBottles = bottles.filter((b) => order.includes(b.number));
     const partial = scoreTasters({ participants, bottles: revealedBottles, predictions: predictions.filter((p) => revealedBottles.some((b) => b.id === p.bottle_id)) });
     const scoresFor = (bottleId) =>
@@ -50,7 +53,7 @@ export const GET = route(async (_req, { code }) => {
       tasting: { code: tasting.code, name: tasting.name, event_date: tasting.event_date, phase: tasting.phase },
       me: me ? { id: me.id, name: me.name } : null,
       live: true,
-      total: bottles.length,
+      total: bottles.filter((b) => b.number).length,
       revealed: shown.map((w) => ({ ...w, scores: scoresFor(w.id) })),
       standings: partial.filter((t) => t.max > 0).map(({ details, ...t }) => t),
     });

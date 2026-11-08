@@ -114,7 +114,7 @@ export default function Archives() {
                   )}
                   {s.meilleurDegustateur.length > 0 && (
                     <p className="small">
-                      <strong>Meilleur dégustateur :</strong> {s.meilleurDegustateur.map((x) => x.name).join(' et ')} ({fmtNote(s.meilleurDegustateur[0].pct)} % des points)
+                      <strong>Meilleur dégustateur :</strong> {s.meilleurDegustateur.map((x) => x.name).join(' et ')} ({fmtNote(s.meilleurDegustateur[0].note)}/20)
                     </p>
                   )}
                 </>
@@ -177,7 +177,7 @@ export default function Archives() {
         {tab === 'palmares' && (
           <div className="stack">
             <p className="small muted">
-              Classement de tous les dégustateurs, toutes soirées confondues, selon le pourcentage des points de pronostics obtenus. Les participations hors concours ne comptent pas dans la moyenne.
+              Classement de tous les dégustateurs, toutes soirées confondues, selon leur note globale sur 20 : le pourcentage de tous les points de pronostics possibles, ramené sur 20. Les participations hors concours ne comptent pas.
             </p>
             <div className="panel flush">
               {!data.palmares.length && <div className="item muted">Le palmarès se remplira après la première révélation.</div>}
@@ -189,11 +189,12 @@ export default function Archives() {
                       <div className="wine-name">{p.name}</div>
                       <div className="facts">
                         {p.soirees} soirée{p.soirees > 1 ? 's' : ''} · {p.victoires} victoire{p.victoires > 1 ? 's' : ''}
-                        {p.meilleur ? ` · record ${fmtNote(p.meilleur.pct)} %` : ''}
+                        {p.meilleur ? ` · record ${fmtNote(p.meilleur.note)}/20` : ''}
                       </div>
                     </div>
                     <div className="score">
-                      {p.moyenne === null ? '–' : `${fmtNote(p.moyenne)} %`}
+                      {p.moyenne === null ? '–' : fmtNote(p.moyenne)}
+                      {p.moyenne !== null && <small>/20</small>}
                     </div>
                   </div>
                   <button className="linklike small" style={{ marginTop: 8, marginLeft: 'calc(1.6em + 14px)' }} onClick={() => setOpen(open === p.name ? null : p.name)}>
@@ -208,7 +209,7 @@ export default function Archives() {
                             {h.date ? <span className="muted"> · {fmtDate(h.date)}</span> : null}
                           </span>
                           <strong style={{ whiteSpace: 'nowrap' }}>
-                            {h.hors_concours ? 'hors concours' : `${h.rang ? `${h.rang}${h.rang === 1 ? 'er' : 'e'} · ` : ''}${fmtNote(h.pct)} %`}
+                            {h.hors_concours ? 'hors concours' : `${h.rang ? `${h.rang}${h.rang === 1 ? 'er' : 'e'} · ` : ''}${fmtNote(h.note)}/20`}
                           </strong>
                         </Link>
                       ))}

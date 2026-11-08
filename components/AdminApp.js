@@ -231,12 +231,17 @@ function TabHome({ data, act, busy, code, setTab }) {
           </p>
           <ServePicker data={data} act={act} busy={busy} />
           <div className="row">
+            <button className="btn gold" onClick={() => setTab('revelation')}>
+              Révéler un vin
+            </button>
             <button className="btn" onClick={() => setTab('suivi')}>
               Voir le suivi
             </button>
-            <button className="btn ghost" disabled={busy} onClick={() => act('pause', {}, 'Retour en préparation.')}>
-              Repasser en préparation
-            </button>
+            {!(tasting.revealed_numbers || []).length && (
+              <button className="btn ghost" disabled={busy} onClick={() => act('pause', {}, 'Retour en préparation.')}>
+                Repasser en préparation
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -533,6 +538,7 @@ function TabProgress({ data }) {
 function ServePicker({ data, act, busy }) {
   const { tasting, bottles } = data;
   const served = new Set(tasting.served_numbers || []);
+  const shown = new Set(tasting.revealed_numbers || []);
   const numbers = bottles.map((b) => b.number).filter(Boolean).sort((a, b) => a - b);
   if (!numbers.length) return <p className="small muted">Aucune bouteille pour l’instant.</p>;
   return (
@@ -543,13 +549,13 @@ function ServePicker({ data, act, busy }) {
             key={n}
             type="button"
             className={`serve-btn ${tasting.current_number === n ? 'current' : served.has(n) ? 'served' : ''}`}
-            disabled={busy}
+            disabled={busy || shown.has(n)}
             aria-pressed={tasting.current_number === n}
             aria-label={`Servir le vin n°${n}`}
             onClick={() => act('serve', { number: n }, `On sert le n°${n}.`)}
           >
             <Capsule n={n} size="sm" />
-            {tasting.current_number === n ? <span className="tag">en cours</span> : served.has(n) ? <span className="tag" style={{ background: 'var(--trait-fort)' }}>servi</span> : null}
+            {shown.has(n) ? <span className="tag" style={{ background: 'var(--bordeaux)' }}>révélé</span> : tasting.current_number === n ? <span className="tag">en cours</span> : served.has(n) ? <span className="tag" style={{ background: 'var(--trait-fort)' }}>servi</span> : null}
           </button>
         ))}
       </div>
@@ -622,7 +628,7 @@ function TabReveal({ data, act, busy, code }) {
             <Notice kind="ok">Tous les vins sont révélés. Place au podium !</Notice>
           )}
           {left.length === 0 && (
-            <button className="btn gold block" disabled={busy} onClick={() => act('finishReveal', {}, 'Classements affichés.')}>
+            <button className="btn gold block" disabled={busy} onClick={() => act('finishReveal', { confirm: true }, 'Classements affichés.')}>
               Afficher les classements et le podium
             </button>
           )}
@@ -648,33 +654,106 @@ function TabReveal({ data, act, busy, code }) {
     );
   }
 
-  // Dégustation en cours : choisir le mode de révélation.
+  // Dégustation en cours : les vins sont révélés un par un, au fil de la soirée.
+  // D'autres bouteilles peuvent encore être ajoutées et servies après chaque révélation.
+  const served = tasting.served_numbers || [];
+  const numbered = bottles.filter((b) => b.number).sort((a, b) => a.number - b.number);
+  const canReveal = numbered.filter((b) => served.includes(b.number) && !done.includes(b.number));
+  const revealedList = done.map((n) => bottles.find((b) => b.number === n)).filter(Boolean);
+  const notServed = numbered.filter((b) => !served.includes(b.number) && !done.includes(b.number));
+  const allDone = numbered.length > 0 && numbered.every((b) => done.includes(b.number));
+  const stats = (b) => ({
+    fiches: progress.ratings.filter(([, bid]) => bid === b.id).length,
+    pronos: progress.predictions.filter(([, bid]) => bid === b.id).length,
+  });
+  const target = armed && armed !== 'finish' ? numbered.find((b) => b.number === armed) : null;
   return (
-    <div className="panel stack">
-      <h2>Révéler les bouteilles</h2>
-      <p>
-        {progress.ratings.length} notes et {progress.predictions.length} pronostics enregistrés pour {participants.length} participants et {bottles.length} vins.
-      </p>
-      <p className="small muted">Dès que la révélation commence, toutes les fiches et tous les pronostics sont verrouillés. C’est définitif.</p>
-      {!armed ? (
-        <>
-          <button className="btn gold block" onClick={() => setArmed('step')}>
-            Commencer la révélation
-          </button>
-          <p className="tiny muted center">Les bouteilles sont révélées une par une, avec un compte à rebours sur chaque téléphone, les points de chacun et le classement provisoire, puis le podium.</p>
-        </>
-      ) : (
-        <div className="stack">
-          <Notice kind="info">Tout le monde a terminé ? Une fois confirmé, plus aucune modification n’est possible.</Notice>
-          <button className="btn danger block" disabled={busy} onClick={async () => (await act('startReveal', { confirm: true }, 'La révélation commence !')) && setArmed(null)}>
-            Confirmer : commencer la révélation
-          </button>
-          <button className="btn ghost block" onClick={() => setArmed(null)}>
-            Annuler
-          </button>
+    <>
+      <div className="panel stack">
+        <h2>Révéler un vin</h2>
+        <p className="small">
+          {done.length} vin{done.length > 1 ? 's' : ''} révélé{done.length > 1 ? 's' : ''} sur {numbered.length}. Révélez chaque vin quand tout le monde l’a goûté : il s’affiche sur tous les téléphones après un compte à rebours, avec les points de chacun et le classement provisoire. Sa fiche et ses pronostics sont alors verrouillés. Les autres vins restent ouverts, et d’autres bouteilles peuvent encore être ajoutées.
+        </p>
+        {target ? (
+          <div className="stack">
+            <Notice kind="info">
+              Révéler le vin n°{target.number} ? {stats(target).fiches} fiche{stats(target).fiches > 1 ? 's' : ''} et {stats(target).pronos} pronostic{stats(target).pronos > 1 ? 's' : ''} enregistrés sur {participants.length} participants. Ensuite, plus personne ne pourra modifier sa fiche ni son pronostic sur ce vin.
+            </Notice>
+            <button className="btn danger block" disabled={busy} onClick={async () => (await act('revealNumber', { number: target.number }, `Vin n°${target.number} révélé.`)) && setArmed(null)}>
+              Oui, révéler le vin n°{target.number}
+            </button>
+            <button className="btn ghost block" onClick={() => setArmed(null)}>
+              Pas encore
+            </button>
+          </div>
+        ) : canReveal.length > 0 ? (
+          <>
+            {tasting.current_number && canReveal.some((b) => b.number === tasting.current_number) && (
+              <button className="btn gold block" onClick={() => setArmed(tasting.current_number)}>
+                Révéler le vin en cours (n°{tasting.current_number})
+              </button>
+            )}
+            <div className="small muted">Ou touchez le vin servi à révéler :</div>
+            <div className="serve-grid">
+              {canReveal.map((b) => (
+                <button key={b.id} type="button" className="serve-btn" disabled={busy} aria-label={`Révéler le vin n°${b.number}`} onClick={() => setArmed(b.number)}>
+                  <Capsule n={b.number} size="sm" />
+                  <span className="tag" style={{ background: 'var(--trait-fort)' }}>
+                    {stats(b).fiches}/{participants.length}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="tiny muted">Le chiffre sous chaque vin : nombre de fiches remplies sur le nombre de participants.</p>
+          </>
+        ) : (
+          <p className="small muted">{notServed.length ? 'Servez un vin (onglet Soirée) pour pouvoir le révéler.' : allDone ? 'Tous les vins servis sont révélés.' : 'Aucun vin servi pour l’instant.'}</p>
+        )}
+        <Link className="small center" href={`/t/${code}/resultats`}>
+          Ouvrir l’écran de révélation (à projeter sur une télévision)
+        </Link>
+      </div>
+
+      {revealedList.length > 0 && (
+        <div className="panel flush">
+          {[...revealedList].reverse().map((b) => (
+            <div key={b.id} className="item">
+              <Capsule n={b.number} size="sm" />
+              <div className="grow">
+                <div className="name">{[b.producer, b.wine_name !== b.producer ? b.wine_name : null].filter(Boolean).join(', ')}</div>
+                <div className="small muted">{bottleLine(b)}</div>
+                {b.owner_name && <div className="tiny">Apportée par {b.owner_name}</div>}
+              </div>
+            </div>
+          ))}
         </div>
       )}
-    </div>
+
+      <div className="panel stack">
+        <h2>Fin de la soirée</h2>
+        {allDone ? (
+          armed === 'finish' ? (
+            <>
+              <Notice kind="info">Plus aucune bouteille ne pourra être ajoutée. Les classements définitifs et le podium s’affichent sur tous les téléphones.</Notice>
+              <button className="btn danger block" disabled={busy} onClick={async () => (await act('finishReveal', { confirm: true }, 'Classements affichés.')) && setArmed(null)}>
+                Confirmer : afficher les classements et le podium
+              </button>
+              <button className="btn ghost block" onClick={() => setArmed(null)}>
+                Annuler
+              </button>
+            </>
+          ) : (
+            <button className="btn gold block" onClick={() => setArmed('finish')}>
+              Afficher les classements et le podium
+            </button>
+          )
+        ) : (
+          <p className="small muted">
+            Quand tous les vins seront révélés ({numbered.length - done.length} restant{numbered.length - done.length > 1 ? 's' : ''}), vous pourrez afficher les classements définitifs et le podium.
+          </p>
+        )}
+      </div>
+    </>
   );
 }
 

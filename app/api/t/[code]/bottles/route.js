@@ -12,6 +12,10 @@ export const POST = route(async (req, { code }) => {
   const b = await body(req);
   const mine = (q) => q.eq('tasting_id', tasting.id).eq('owner_id', me.id);
   if (tasting.phase === 'revelation') throw new HttpError(403, 'La révélation a commencé : les bouteilles ne peuvent plus être modifiées.');
+  const isRevealed = async (id) => {
+    const row = unwrap(await db().from('bottles').select('number').eq('id', id || '00000000-0000-0000-0000-000000000000').eq('tasting_id', tasting.id).maybeSingle());
+    return !!row && (tasting.revealed_numbers || []).includes(row.number);
+  };
 
   if (b.action === 'add') {
     if (tasting.phase === 'revelee') throw new HttpError(403, 'La soirée est terminée : les bouteilles sont révélées.');
@@ -22,11 +26,13 @@ export const POST = route(async (req, { code }) => {
     if (tasting.phase === 'degustation') await numberMissing(tasting.id);
   } else if (b.action === 'update') {
     if (tasting.phase === 'revelee') throw new HttpError(403, 'Les bouteilles sont révélées.');
+    if (tasting.phase === 'degustation' && (await isRevealed(b.id))) throw new HttpError(403, 'Cette bouteille est révélée : elle ne peut plus être modifiée.');
     if (tasting.phase === 'degustation' && (await bottleInPlay(b.id))) throw new HttpError(403, 'Des participants ont déjà noté ou deviné cette bouteille : ses réponses ne peuvent plus changer.');
     const r = unwrap(await mine(db().from('bottles').update(bottleFields(b.bottle || {})).eq('id', b.id)).select('id'));
     if (!r.length) throw new HttpError(404, 'Bouteille introuvable.');
   } else if (b.action === 'delete') {
     if (tasting.phase === 'revelee') throw new HttpError(403, 'Suppression impossible après la révélation.');
+    if (tasting.phase === 'degustation' && (await isRevealed(b.id))) throw new HttpError(403, 'Cette bouteille est révélée : elle ne peut plus être retirée.');
     if (tasting.phase === 'degustation' && (await bottleInPlay(b.id))) throw new HttpError(403, 'Des participants ont déjà noté ou deviné cette bouteille : elle ne peut plus être retirée.');
     unwrap(await mine(db().from('bottles').delete().eq('id', b.id)));
   } else {

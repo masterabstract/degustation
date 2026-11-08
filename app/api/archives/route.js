@@ -2,6 +2,7 @@ import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body } from '@/lib/http';
 import { organizerPasswordOk } from '@/lib/auth';
 import { computeResults, norm } from '@/lib/scoring';
+import { sur20 } from '@/lib/bareme';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,9 +45,9 @@ export const GET = route(async () => {
         p.max += x.max;
         if (x.rank === 1) p.victoires += 1;
         const pc = Math.round(x.pct * 1000) / 10;
-        if (!p.meilleur || pc > p.meilleur.pct) p.meilleur = { pct: pc, soiree: t.name };
+        if (!p.meilleur || pc > p.meilleur.pct) p.meilleur = { pct: pc, note: sur20(x.pct), soiree: t.name };
       }
-      p.historique.push({ code: t.code, soiree: t.name, date: t.event_date, rang: x.rank, points: x.points, max: x.max, pct: Math.round(x.pct * 1000) / 10, hors_concours: x.hors_concours });
+      p.historique.push({ code: t.code, soiree: t.name, date: t.event_date, rang: x.rank, points: x.points, max: x.max, pct: Math.round(x.pct * 1000) / 10, note: sur20(x.pct), hors_concours: x.hors_concours });
       people.set(key, p);
     }
 
@@ -58,12 +59,12 @@ export const GET = route(async () => {
       participants: by(participants, t.id).length,
       vins: by(bottles, t.id).length,
       meilleurVin: bestWines.map((w) => ({ label: label(w), appellation: w.appellation, note: w.average, owner: w.owner })),
-      meilleurDegustateur: bestTasters.map((x) => ({ name: x.name, points: x.points, max: x.max, pct: Math.round(x.pct * 1000) / 10 })),
+      meilleurDegustateur: bestTasters.map((x) => ({ name: x.name, points: x.points, max: x.max, pct: Math.round(x.pct * 1000) / 10, note: sur20(x.pct) })),
     };
   });
 
   const palmares = [...people.values()]
-    .map((p) => ({ ...p, points: Math.round(p.points * 100) / 100, moyenne: p.max ? Math.round((p.points / p.max) * 1000) / 10 : null }))
+    .map((p) => ({ ...p, points: Math.round(p.points * 100) / 100, moyenne: p.max ? sur20(p.points / p.max) : null }))
     .sort((a, b) => (b.moyenne ?? -1) - (a.moyenne ?? -1) || b.victoires - a.victoires || b.soirees - a.soirees);
 
   return json({ soirees, palmares });

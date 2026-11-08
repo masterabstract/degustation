@@ -51,6 +51,17 @@ export default function ParticipantApp({ code }) {
             </Link>
           </div>
         )}
+        {tasting.phase === 'degustation' && (tasting.revealed_numbers || []).length > 0 && (
+          <div className="panel stack center reveal-in">
+            <h2>Vin n°{tasting.revealed_numbers[tasting.revealed_numbers.length - 1]} révélé</h2>
+            <p className="small">
+              {tasting.revealed_numbers.length > 1 ? `${tasting.revealed_numbers.length} vins sont révélés. ` : ''}Découvrez la bouteille, les points de chacun et le classement provisoire. La dégustation continue pour les autres vins.
+            </p>
+            <Link href={`/t/${code}/resultats`} className="btn gold block">
+              Voir la révélation
+            </Link>
+          </div>
+        )}
         {tasting.phase === 'revelee' && (
           <div className="panel stack center reveal-in">
             <h2>Les bouteilles sont révélées</h2>
@@ -81,7 +92,7 @@ function Waiting({ name }) {
   );
 }
 
-function WineRow({ b, code, sheets, mine, now, later }) {
+function WineRow({ b, code, sheets, mine, now, later, revealed }) {
   const s = sheets[b.id] || {};
   return (
     <li className={now ? 'now-serving' : ''}>
@@ -91,6 +102,7 @@ function WineRow({ b, code, sheets, mine, now, later }) {
           {now && <span className="now-badge">En cours de service</span>}
           <div className="title">Vin n°{b.number}</div>
           {mine && <div className="tiny muted">Votre bouteille</div>}
+          {revealed && <div className="tiny" style={{ color: 'var(--bordeaux)', fontWeight: 700 }}>Révélé · fiche verrouillée</div>}
           <div className="ticks">
             <span className={`tick ${ratingDone(s.rating) ? 'done' : ''}`}>
               {ratingDone(s.rating) ? `Fiche · ${String(s.rating.note).replace('.', ',')}/20` : 'Fiche à remplir'}
@@ -111,12 +123,14 @@ function WineList({ data, code }) {
   const mineIds = new Set((data.myBottles || []).map((b) => b.id));
   const done = bottles.filter((b) => ratingDone(sheets[b.id]?.rating)).length;
   const served = new Set(tasting.served_numbers || []);
+  const shown = new Set(tasting.revealed_numbers || []);
   const live = tasting.phase === 'degustation' && served.size > 0;
   const current = bottles.find((b) => b.number === tasting.current_number);
-  // Ordre : le vin en cours, puis les vins déjà servis (le plus récent d'abord), puis les autres.
-  const servedList = bottles.filter((b) => served.has(b.number) && b !== current).sort((a, c) => c.number - a.number);
-  const laterList = bottles.filter((b) => !served.has(b.number) && b !== current);
-  const row = (b, extra = {}) => <WineRow key={b.id} b={b} code={code} sheets={sheets} mine={mineIds.has(b.id)} {...extra} />;
+  // Ordre : le vin en cours, puis les vins servis (le plus récent d'abord), les vins à venir, et enfin les vins révélés.
+  const servedList = bottles.filter((b) => served.has(b.number) && b !== current && !shown.has(b.number)).sort((a, c) => c.number - a.number);
+  const laterList = bottles.filter((b) => !served.has(b.number) && b !== current && !shown.has(b.number));
+  const revealedList = bottles.filter((b) => shown.has(b.number) && b !== current).sort((a, c) => c.number - a.number);
+  const row = (b, extra = {}) => <WineRow key={b.id} b={b} code={code} sheets={sheets} mine={mineIds.has(b.id)} revealed={tasting.phase === 'degustation' && shown.has(b.number)} {...extra} />;
 
   return (
     <>
@@ -141,6 +155,12 @@ function WineList({ data, code }) {
             <>
               <div className="section-label">Pas encore servis</div>
               <ul className="panel flush wine-list">{laterList.map((b) => row(b, { later: true }))}</ul>
+            </>
+          )}
+          {revealedList.length > 0 && (
+            <>
+              <div className="section-label">Déjà révélés</div>
+              <ul className="panel flush wine-list">{revealedList.map((b) => row(b))}</ul>
             </>
           )}
         </>
@@ -186,7 +206,7 @@ function Rules() {
         </p>
         <VintageTable />
         <p>
-          <strong>Classement</strong> : au pourcentage des points possibles, car personne ne joue sur ses propres bouteilles. En cas d’égalité : cépages, puis géographie, puis pays, puis millésime.
+          <strong>Classement</strong> : note globale sur 20, au prorata des points possibles (71,5 % des points = 14,3/20), car personne ne joue sur ses propres bouteilles et chacun n’a donc pas le même nombre de points possibles. En cas d’égalité : cépages, puis géographie, puis pays, puis millésime.
         </p>
       </div>
     </details>

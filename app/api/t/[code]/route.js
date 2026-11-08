@@ -46,6 +46,7 @@ export const GET = route(async (_req, { code }) => {
       phase: tasting.phase,
       current_number: tasting.phase === 'degustation' ? tasting.current_number : null,
       served_numbers: tasting.served_numbers || [],
+      revealed_numbers: tasting.phase === 'preparation' ? [] : tasting.revealed_numbers || [],
     },
     me: me ? { id: me.id, name: me.name } : null,
     isAdmin: await isAdmin(tasting),

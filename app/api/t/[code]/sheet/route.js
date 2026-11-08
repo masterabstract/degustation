@@ -45,9 +45,11 @@ export const PUT = route(async (req, { code }) => {
 
   const b = await body(req);
   const bottle = unwrap(
-    await db().from('bottles').select('id').eq('id', b.bottleId || '00000000-0000-0000-0000-000000000000').eq('tasting_id', tasting.id).maybeSingle()
+    await db().from('bottles').select('id, number').eq('id', b.bottleId || '00000000-0000-0000-0000-000000000000').eq('tasting_id', tasting.id).maybeSingle()
   );
   if (!bottle) throw new HttpError(404, 'Vin introuvable.');
+  // Les vins sont révélés un par un pendant la soirée : un vin révélé est verrouillé.
+  if ((tasting.revealed_numbers || []).includes(bottle.number)) throw new HttpError(403, `Le vin n°${bottle.number} est révélé : sa fiche et les pronostics sont verrouillés.`);
 
   const keys = { tasting_id: tasting.id, participant_id: me.id, bottle_id: bottle.id };
   const now = new Date().toISOString();

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api, Band, Notice, Capsule, Loading, fmtNote } from './ui';
+import { sur20 } from '@/lib/bareme';
 
 
 const TABS = [
@@ -13,7 +14,8 @@ const TABS = [
 ];
 
 const num = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
-const pctTxt = (x) => `${String(Math.round(x * 1000) / 10).replace('.', ',')} %`;
+// Note globale sur 20, au prorata du pourcentage des points possibles.
+const noteTxt = (pct) => `${String(sur20(pct)).replace('.', ',')}/20`;
 
 // Détail transparent d'un score sur un vin : critère par critère, avec l'explication.
 export function ScoreDetail({ d }) {
@@ -176,7 +178,8 @@ function Tasters({ data }) {
               </div>
             </div>
             <div className="score">
-              {pctTxt(t.pct)}
+              {String(sur20(t.pct)).replace('.', ',')}
+              <small>/20</small>
             </div>
           </div>
           <button className="linklike small" style={{ marginTop: 8, marginLeft: 'calc(1.6em + 14px)' }} onClick={() => setOpen(open === t.id ? null : t.id)}>
@@ -290,6 +293,7 @@ function LiveReveal({ data, code }) {
   const visible = data.revealed.slice(0, shownCount);
   const next = data.revealed[shownCount];
   const remaining = data.total - shownCount;
+  const during = data.tasting.phase === 'degustation'; // révélations au fil de la dégustation
 
   return (
     <main>
@@ -313,8 +317,13 @@ function LiveReveal({ data, code }) {
           </div>
           <p className="small muted" style={{ marginTop: 8 }}>
             {shownCount} vin{shownCount > 1 ? 's' : ''} révélé{shownCount > 1 ? 's' : ''} sur {data.total}
-            {remaining > 0 ? ' · le meilleur sera révélé en dernier' : ' · le podium arrive !'}
+            {during ? (remaining > 0 ? ' · la dégustation continue' : ' · d’autres bouteilles peuvent encore arriver') : remaining > 0 ? ' · le meilleur sera révélé en dernier' : ' · le podium arrive !'}
           </p>
+          {during && data.me && (
+            <Link href={`/t/${code}`} className="btn block" style={{ marginTop: 10 }}>
+              Retour aux vins à déguster
+            </Link>
+          )}
         </div>
         {visible.length === 0 && (
           <div className="panel center stack">
@@ -417,7 +426,7 @@ function Podium({ data, animate }) {
               <div key={i} className={`step p${i + 1}`} style={{ visibility: top[i].length ? 'visible' : 'hidden' }}>
                 <div className="medal">{i + 1}</div>
                 <div className="who">{names(top[i]) || '-'}</div>
-                <div className="pts">{top[i][0] ? pctTxt(top[i][0].pct) : ''}</div>
+                <div className="pts">{top[i][0] ? noteTxt(top[i][0].pct) : ''}</div>
               </div>
             ))}
           </div>
@@ -447,7 +456,7 @@ function Standings({ list, n }) {
               {t.name}
             </span>
             <span style={{ whiteSpace: 'nowrap' }}>
-              {num(t.points)}/{t.max} · <strong>{pctTxt(t.pct)}</strong>
+              {num(t.points)}/{t.max} pts · <strong>{noteTxt(t.pct)}</strong>
             </span>
           </div>
         ))}

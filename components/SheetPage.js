@@ -63,7 +63,9 @@ export default function SheetPage({ code, number }) {
   const bottles = state?.bottles || [];
   const idx = bottles.findIndex((b) => b.number === number);
   const bottle = bottles[idx];
-  const locked = state?.tasting.phase !== 'degustation';
+  // Verrouillé : hors dégustation, ou vin déjà révélé (les vins sont révélés un par un).
+  const thisRevealed = !!state && (state.tasting.revealed_numbers || []).includes(Number(number));
+  const locked = state?.tasting.phase !== 'degustation' || thisRevealed;
 
   // Surveille l'état de la soirée (pause, révélation) sans toucher à la saisie en cours.
   useEffect(() => {
@@ -195,12 +197,12 @@ export default function SheetPage({ code, number }) {
           </nav>
         </div>
 
-        {locked && (state.tasting.phase === 'revelee' || state.tasting.phase === 'revelation') && (
+        {locked && (state.tasting.phase === 'revelee' || state.tasting.phase === 'revelation' || thisRevealed) && (
           <div className="panel stack center reveal-in" style={{ marginBottom: 12 }}>
-            <h2>{state.tasting.phase === 'revelation' ? 'La révélation a commencé' : 'Les bouteilles sont révélées'}</h2>
+            <h2>{thisRevealed && state.tasting.phase === 'degustation' ? `Le vin n°${number} est révélé` : state.tasting.phase === 'revelation' ? 'La révélation a commencé' : 'Les bouteilles sont révélées'}</h2>
             <p className="small muted">Cette fiche est verrouillée.</p>
             <Link href={`/t/${code}/resultats`} className="btn gold block">
-              {state.tasting.phase === 'revelation' ? 'Suivre la révélation' : 'Voir les résultats'}
+              {state.tasting.phase === 'revelee' ? 'Voir les résultats' : 'Voir la révélation'}
             </Link>
           </div>
         )}
@@ -214,6 +216,22 @@ export default function SheetPage({ code, number }) {
             </button>
           </div>
         )}
+        {(() => {
+          // Un autre vin vient d'être révélé : on le signale, sans quitter la fiche en cours.
+          const rv = state.tasting.revealed_numbers || [];
+          const last = rv[rv.length - 1];
+          if (state.tasting.phase !== 'degustation' || !last || last === bottle.number) return null;
+          return (
+            <div className="notice ok row between" style={{ marginBottom: 12, flexWrap: 'nowrap' }}>
+              <span>
+                <strong>Vin n°{last} révélé</strong>
+              </span>
+              <Link className="btn sm" href={`/t/${code}/resultats`}>
+                Voir
+              </Link>
+            </div>
+          );
+        })()}
         {(state.myBottles || []).some((m) => m.id === bottle.id) && (
           <Notice kind="info">C’est votre bouteille : vous pouvez la noter pour le plaisir, mais votre note et vos pronostics ne comptent pas.</Notice>
         )}

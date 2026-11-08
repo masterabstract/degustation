@@ -210,7 +210,7 @@ ANTHROPIC_API_KEY (facultatif) :</div>
     <li>Sur un 2e téléphone (ou en navigation privée), allez sur le site, tapez le code à 5 caractères et choisissez un prénom. Dans <strong>Mes bouteilles</strong>, ajoutez une bouteille (essayez la photo si vous l’avez activée).</li>
     <li>Sur le téléphone organisateur, onglet <strong>Bouteilles</strong> : la bouteille est comptée, sans aucun détail. Onglet <strong>Soirée</strong> : <span class="btn">Lancer la dégustation</span>. Ajoutez ensuite une 2e bouteille depuis le 2e téléphone : elle reçoit tout de suite le numéro suivant.</li>
     <li>Sur le 2e téléphone, le vin apparaît : remplissez les pronostics et la fiche, « Enregistré » s’affiche en bas. Sur le téléphone organisateur, l’onglet <strong>Suivi</strong> se met à jour en quelques secondes.</li>
-    <li>Onglet <strong>Révélation</strong> : <span class="btn">Commencer la révélation</span>, confirmez, puis <span class="btn">Révéler la bouteille suivante</span> et enfin <span class="btn">Afficher les classements et le podium</span>. Sur le 2e téléphone, chaque bouteille révélée apparaît toute seule, puis le podium.</li>
+    <li>Onglet Soirée : servez le n°1, puis onglet <strong>Révélation</strong> : <span class="btn">Révéler le vin en cours (n°1)</span> et confirmez. Sur le 2e téléphone, « Vin n°1 révélé » apparaît tout seul. Quand tous les vins sont révélés : <span class="btn">Afficher les classements et le podium</span>.</li>
   </ol>
   <div class="box ok">Si ces 6 points fonctionnent, le site est prêt pour la soirée. Vous pouvez laisser la soirée « Test » : elle n’apparaît nulle part ailleurs.</div>
 </section>
@@ -234,18 +234,18 @@ ANTHROPIC_API_KEY (facultatif) :</div>
   </ol>
   <h3>Pendant la dégustation</h3>
   <ol>
-    <li><span class="btn">Lancer la dégustation</span> : les vins apparaissent sur tous les téléphones en quelques secondes, classés par numéro. On peut continuer à ajouter des bouteilles jusqu’à la révélation. Un propriétaire peut retirer la sienne tant que personne ne l’a notée.</li>
+    <li><span class="btn">Lancer la dégustation</span> : les vins apparaissent sur tous les téléphones en quelques secondes, classés par numéro. On peut ajouter des bouteilles pendant toute la soirée, même après des révélations, jusqu’à l’affichage du podium. Un propriétaire peut retirer ou modifier la sienne tant que personne ne l’a notée ni devinée.</li>
     <li>Vous choisissez l’ordre de service <strong>en direct</strong>. Onglet <strong>Soirée</strong>, partie « Vin en cours de service » : touchez le numéro que vous servez. Sur tous les téléphones, ce vin passe en tête de liste avec la mention « En cours de service », suivi des vins déjà servis puis de ceux qui ne l’ont pas encore été. Un invité resté sur une autre fiche voit « On sert maintenant le n°4 » avec un bouton pour y aller.</li>
     <li>Chacun voit « votre bouteille » à côté de la sienne. Il peut la noter pour le plaisir, mais sa note et ses pronostics sur ce vin ne comptent pas.</li>
     <li>Suivez l’avancement dans l’onglet <strong>Suivi</strong>. Quelqu’un a changé de téléphone ? Onglet Participants, <span class="btn">Libérer</span> à côté de son nom : il pourra se reconnecter et retrouvera ses notes et ses bouteilles.</li>
   </ol>
-  <h3>La révélation</h3>
+  <h3>La révélation, vin par vin, pendant la dégustation</h3>
   <ol>
     <li>Téléchargez d’abord une sauvegarde (onglet Soirée, <span class="btn">Télécharger la sauvegarde</span>).</li>
-    <li>Onglet <strong>Révélation</strong> : vérifiez que tout le monde a fini, puis touchez <span class="btn">Commencer la révélation</span> et confirmez. Dès cet instant, toutes les fiches et tous les pronostics sont verrouillés : c’est définitif.</li>
-    <li>Les invités touchent <span class="btn">Suivre la révélation</span> sur leur téléphone. Vous pouvez aussi ouvrir l’écran de révélation sur une télévision ou un ordinateur.</li>
-    <li>Touchez <span class="btn">Révéler la bouteille suivante</span> autant de fois qu’il y a de bouteilles. Le site révèle <strong>du moins bien noté au mieux noté</strong> : le meilleur vin arrive en dernier. Sur chaque téléphone, un compte à rebours précède chaque bouteille, qui apparaît avec son domaine, son appellation, sa note moyenne, son propriétaire, son petit mot, <strong>les pronostics et les points de chacun sur ce vin</strong> (avec le détail du calcul), et le <strong>classement provisoire</strong>. Vous pouvez aussi choisir vous-même la bouteille à révéler.</li>
-    <li>Quand toutes les bouteilles sont révélées, touchez <span class="btn">Afficher les classements et le podium</span> : le meilleur vin et le podium des dégustateurs s’affichent sur tous les téléphones, puis les classements complets, les commentaires et le résumé de la soirée.</li>
+    <li>Quand tout le monde a goûté le vin en cours, onglet <strong>Révélation</strong> (ou <span class="btn">Révéler un vin</span> dans l’onglet Soirée) : touchez <span class="btn">Révéler le vin en cours</span>, ou le numéro d’un vin déjà servi, puis confirmez. Le site indique combien de fiches et de pronostics sont enregistrés sur ce vin. Seul ce vin est verrouillé : sa fiche et ses pronostics ne peuvent plus être modifiés.</li>
+    <li>Sur chaque téléphone, l’annonce « Vin n°X révélé » apparaît toute seule, avec un bouton <span class="btn">Voir la révélation</span>. Après un compte à rebours, la bouteille apparaît avec son domaine, son appellation, sa note moyenne, son propriétaire, son petit mot, <strong>les pronostics et les points de chacun sur ce vin</strong> (avec le détail du calcul), et le <strong>classement provisoire</strong> en note sur 20. Vous pouvez aussi projeter l’écran de révélation sur une télévision.</li>
+    <li><strong>La dégustation continue</strong> : servez le vin suivant, et <strong>d’autres bouteilles peuvent encore être ajoutées</strong> après chaque révélation. Elles reçoivent un numéro et apparaissent sur tous les téléphones.</li>
+    <li>Quand tous les vins sont révélés et qu’aucune bouteille ne doit plus arriver, touchez <span class="btn">Afficher les classements et le podium</span> et confirmez : le meilleur vin et le podium des dégustateurs s’affichent sur tous les téléphones, puis les classements complets, les commentaires et le résumé de la soirée. Ensuite, plus aucune bouteille ne peut être ajoutée.</li>
 
     <li>Après la révélation, vous voyez enfin les bouteilles dans l’onglet Bouteilles, et pouvez corriger une faute de frappe : les classements se recalculent. Téléchargez alors la sauvegarde finale, complète.</li>
   </ol>
@@ -255,7 +255,7 @@ ANTHROPIC_API_KEY (facultatif) :</div>
       <li><strong>Pays</strong> : 2 points pour un vin français, 5 pour un vin étranger.</li>
       <li><strong>Géographie (5 points)</strong> : vin français, appellation exacte 5, sinon bonne région 3. Vin étranger, appellation ou indication exacte (DOCG, DOC, DO, AVA…) 5, sous-région ou vallée 4, grande région 3, grande zone (plus large que la région, ex. Italie du Nord) 2. Seul le meilleur niveau trouvé compte.</li>
       <li><strong>Millésime (3 points)</strong> : année exacte 3, puis on perd des points à chaque année d’écart : 1 point par an pour 2020 et après, 0,75 pour les années 2010, 0,6 pour 2000, 0,5 pour 1990, 0,3 pour 1980, 0,25 pour 1970, 0,2 pour 1960 et avant.</li>
-      <li><strong>Classement</strong> : au pourcentage des points possibles (personne ne joue sur ses propres bouteilles). Départage : cépages, puis géographie, puis pays, puis millésime.</li>
+      <li><strong>Classement</strong> : une <strong>note globale sur 20</strong>, au prorata du pourcentage des points possibles (71,5 % des points = 14,3/20), car personne ne joue sur ses propres bouteilles et chacun n’a donc pas le même nombre de points possibles. Départage : cépages, puis géographie, puis pays, puis millésime.</li>
     </ul>
     Accents, majuscules, tirets, mentions DOCG, AOC ou 1er cru, et synonymes courants (Shiraz et Syrah, Garnacha et Grenache…) sont ignorés. Le détail du calcul de chaque point est visible dans les résultats et dans la sauvegarde.</div>
     Dans les résultats, chacun voit le détail critère par critère (par exemple « Cépages 7/10, Géographie 3/5 »). Personne ne marque de points sur sa propre bouteille.
@@ -268,7 +268,7 @@ ANTHROPIC_API_KEY (facultatif) :</div>
     <li>Toutes les soirées <strong>restent enregistrées</strong> dans la base de données : rien n’est effacé après la révélation.</li>
     <li>Sur la page d’accueil du site, <span class="btn">Archives et palmarès</span> affiche toutes les soirées révélées (avec le meilleur vin et le meilleur dégustateur), et un lien vers leurs résultats complets. Après la révélation, ces résultats sont consultables à tout moment, sans avoir à se reconnecter.</li>
     <li><strong>Effacer des soirées</strong> (ex : une soirée de test) : page Archives, onglet Soirées, touchez <span class="btn">Effacer des soirées…</span>, cochez les soirées, entrez le mot de passe organisateur (celui de la variable ORGANIZER_PASSWORD), puis confirmez. C’est définitif, et le palmarès se recalcule sans elles. Téléchargez la sauvegarde avant si vous voulez la garder.</li>
-    <li>L’onglet <strong>Palmarès</strong> classe tous les dégustateurs, toutes soirées confondues, selon le pourcentage des points de pronostics obtenus sur l’ensemble de leurs soirées, avec leur nombre de soirées, de victoires et leur record. Chacun peut afficher le détail de ses soirées.</li>
+    <li>L’onglet <strong>Palmarès</strong> classe tous les dégustateurs, toutes soirées confondues, selon leur note globale sur 20 sur l’ensemble de leurs soirées (pourcentage de tous leurs points possibles, ramené sur 20), avec leur nombre de soirées, de victoires et leur record. Chacun peut afficher le détail de ses soirées.</li>
     <li>Une personne est reconnue d’une soirée à l’autre par son prénom (sans tenir compte des accents ni des majuscules) : demandez à chacun de garder toujours le même prénom ou pseudonyme.</li>
     <li>Les soirées en préparation ou en cours n’apparaissent jamais dans les archives.</li>
     <li>Pour effacer une soirée de test : espace organisateur, onglet <strong>Soirée</strong>, <span class="btn">Supprimer cette soirée</span>, puis recopiez son nom pour confirmer. Elle disparaît aussi des archives et du palmarès.</li>
@@ -281,7 +281,7 @@ ANTHROPIC_API_KEY (facultatif) :</div>
   <p>Le plan gratuit de Supabase ne fait pas de sauvegarde automatique de la base. Le site vous permet d’en faire vous-même, en un clic :</p>
   <ul>
     <li>Espace organisateur, onglet <strong>Soirée</strong> : <span class="btn">Télécharger la sauvegarde</span>. Un fichier <code>.json</code> contenant toute la soirée (participants, bouteilles, fiches, pronostics et, après la révélation, les résultats) est enregistré dans vos Téléchargements.</li>
-    <li>Faites-le au moins <strong>juste avant la révélation</strong> et <strong>juste après</strong>.</li>
+    <li>Faites-le au moins <strong>avant la première révélation</strong> et <strong>après le podium</strong>.</li>
   </ul>
   <div class="box tip">Un projet Supabase gratuit se met en veille après une semaine sans activité. Il suffit alors d’ouvrir le projet sur supabase.com et de cliquer sur <span class="btn">Restore project</span> : les données sont conservées. Pour garder vos archives des années, ne laissez pas le projet en veille trop longtemps (ouvrez le site de temps en temps) et téléchargez la sauvegarde finale de chaque soirée. Avant la soirée, aucun risque si vous faites la répétition dans la semaine.</div>
 </section>
@@ -319,7 +319,7 @@ ANTHROPIC_API_KEY (facultatif) :</div>
     <li>Les téléphones ne communiquent <strong>jamais directement</strong> avec la base de données. Ils passent par le serveur du site (Vercel), seul à connaître la clé secrète, et qui ne renvoie à chacun que ce qu’il a le droit de voir. Inspecter la page ou ses requêtes ne montre rien de plus.</li>
     <li>La base Supabase est verrouillée : sécurité par ligne (RLS) activée sans aucune règle publique, et droits retirés aux accès publics. Même avec la clé publique du projet, une lecture directe est refusée.</li>
     <li>Les numéros sont tirés au sort : ils ne correspondent pas à l’ordre de saisie.</li>
-    <li>Chaque prénom n’est utilisable que sur un seul téléphone à la fois. Les pronostics sont verrouillés par la base elle-même dès la révélation.</li>
+    <li>Chaque prénom n’est utilisable que sur un seul téléphone à la fois. Un vin révélé est verrouillé : plus aucune fiche ni aucun pronostic ne peut être modifié sur ce vin.</li>
     <li>La photo d’une étiquette part du téléphone vers le serveur du site, puis vers l’IA pour être lue. Elle n’est jamais enregistrée, et le résultat ne revient qu’à ce téléphone.</li>
   </ul>
   <p class="small" style="color:var(--taupe)">Seule limite théorique : l’organisateur pourrait « libérer » un invité puis se connecter sous son prénom pour voir ses bouteilles. L’invité serait alors immédiatement déconnecté sur son téléphone, donc il s’en apercevrait.</p>
