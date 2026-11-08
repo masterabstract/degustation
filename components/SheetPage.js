@@ -163,7 +163,7 @@ export default function SheetPage({ code, number }) {
   const prev = bottles[idx - 1];
   const next = bottles[idx + 1];
   const r = rating;
-  const predOpts = optionsFor(pred.country); // listes du pays pronostiqué
+  const predOpts = optionsFor(pred.country, pred.region); // listes du pays, puis de la région pronostiqués
   const sc = (key) => (
     <Scale steps={SCALES[key].steps} none={SCALES[key].none} value={r[key]} onChange={(v) => change('rating', { [key]: v })} disabled={locked} />
   );
@@ -261,7 +261,7 @@ export default function SheetPage({ code, number }) {
             <p className="small muted">
               D’après vous, quel est ce vin ? Un vin français vaut {BAREME.france.total} points, un vin étranger {BAREME.foreign.total} points. Vos pronostics restent secrets jusqu’à la révélation.
             </p>
-            <Crit title="Pays (à choisir en premier)" pts={`${BAREME.france.country} ou ${BAREME.foreign.country} pts`} hint={`${BAREME.france.country} points si le vin est français, ${BAREME.foreign.country} points s’il est étranger.`}>
+            <Crit title="Pays" n={1} pts={`${BAREME.france.country} ou ${BAREME.foreign.country} pts`} hint={`${BAREME.france.country} points si le vin est français, ${BAREME.foreign.country} points s’il est étranger.`}>
               <select className="input" aria-label="Pays" value={pred.country} onChange={(e) => change('pred', { country: e.target.value })} disabled={locked}>
                 <option value="">Choisir un pays</option>
                 {COUNTRIES.map((x) => (
@@ -269,46 +269,11 @@ export default function SheetPage({ code, number }) {
                 ))}
               </select>
             </Crit>
-            <Crit title="Appellation" pts="5 pts" hint="Appellation exacte : 5 points. Sinon, une bonne région rapporte quand même des points (champ suivant).">
-              <Autocomplete
-                value={pred.appellation}
-                onChange={(v) => change('pred', { appellation: v })}
-                options={predOpts.appellations}
-                browse
-                onPick={(o) => {
-                  const patch = fillFromAppellation({ ...pred, appellation: o.label }, o.label, filled.current);
-                  if (patch) delete patch.color; // la couleur ne fait pas partie du barème
-                  if (patch && Object.keys(patch).length) change('pred', patch);
-                  setAutoNote(describePatch(patch));
-                }}
-                placeholder="Tapez les premières lettres, ex : gev"
-                aria-label="Appellation"
-                maxLength={120}
-                disabled={locked}
-              />
-              {autoNote && <div className="autofill-note">{autoNote}</div>}
-            </Crit>
-            <Crit
-              title="Cépage(s)"
-              pts={`${BAREME.france.grapes} pts`}
-              hint={`Assemblage : chaque cépage trouvé rapporte sa part (70 % de Merlot = 7 points). Moins ${BAREME.grapeWrongPenalty} point par cépage faux. Séparez les cépages par des virgules.`}
-            >
-              <Autocomplete
-                multi
-                value={pred.grapes}
-                onChange={(v) => change('pred', { grapes: v })}
-                options={predOpts.grapes}
-                browse
-                placeholder="Ex : Pinot Noir"
-                aria-label="Cépage"
-                maxLength={120}
-                disabled={locked}
-              />
-            </Crit>
             <Crit
               title="Région, sous-région ou zone"
+              n={2}
               pts="2 à 4 pts"
-              hint="Si l’appellation est fausse : vin français, bonne région 3 points ; vin étranger, sous-région 4, grande région 3, zone ou province 2. Seul le meilleur niveau compte."
+              hint={`Choisissez la région : la liste des appellations et des cépages se limite ensuite à cette région. Si l’appellation est fausse, une bonne région rapporte quand même : vin français 3 points ; vin étranger, sous-région 4, grande région 3, zone ou province 2.${pred.country ? '' : ' Choisissez d’abord le pays.'}`}
             >
               <Autocomplete
                 value={pred.region}
@@ -325,7 +290,51 @@ export default function SheetPage({ code, number }) {
                 disabled={locked}
               />
             </Crit>
-            <Crit title="Millésime" pts={`${BAREME.france.vintage} pts`} hint="Année exacte : 3 points. Ensuite on perd des points à chaque année d’écart, moins vite pour les vins anciens (tableau ci-dessous).">
+            <Crit
+              title="Appellation"
+              n={3}
+              pts="5 pts"
+              hint={predOpts.inRegion ? `Appellations de la région ${pred.region}, plus Vin de France pour les vins sans appellation. Une autre appellation du pays ? Tapez son nom, elle sera proposée. Appellation exacte : 5 points.` : 'Appellation exacte : 5 points. Choisissez d’abord la région pour réduire la liste.'}
+            >
+              <Autocomplete
+                value={pred.appellation}
+                onChange={(v) => change('pred', { appellation: v })}
+                options={predOpts.appellations}
+                fallback={predOpts.inRegion ? predOpts.countryAppellations : undefined}
+                browse
+                onPick={(o) => {
+                  const patch = fillFromAppellation({ ...pred, appellation: o.label }, o.label, filled.current);
+                  if (patch) delete patch.color; // la couleur ne fait pas partie du barème
+                  if (patch && Object.keys(patch).length) change('pred', patch);
+                  setAutoNote(describePatch(patch));
+                }}
+                placeholder="Tapez les premières lettres, ex : gev"
+                aria-label="Appellation"
+                maxLength={120}
+                disabled={locked}
+              />
+              {autoNote && <div className="autofill-note">{autoNote}</div>}
+            </Crit>
+            <Crit
+              title="Cépage(s)"
+              n={4}
+              pts={`${BAREME.france.grapes} pts`}
+              hint={`Assemblage : chaque cépage trouvé rapporte sa part (70 % de Merlot = 7 points). Moins ${BAREME.grapeWrongPenalty} point par cépage faux. Séparez les cépages par des virgules.${predOpts.inRegion ? ` Liste : cépages de la région ${pred.region} ; tapez un autre nom pour chercher dans tout le pays.` : ''}`}
+            >
+              <Autocomplete
+                multi
+                value={pred.grapes}
+                onChange={(v) => change('pred', { grapes: v })}
+                options={predOpts.grapes}
+                fallback={predOpts.inRegion ? predOpts.countryGrapes : undefined}
+                browse
+                placeholder="Ex : Pinot Noir"
+                aria-label="Cépage"
+                maxLength={120}
+                disabled={locked}
+              />
+            </Crit>
+            <Crit title="Millésime" n={5} pts={`${BAREME.france.vintage} pts`} hint="Année exacte : 3 points. Ensuite on perd des points à chaque année d’écart, moins vite pour les vins anciens (tableau ci-dessous).">
               <div className="row">
                 <input
                   className="input grow"

@@ -30,13 +30,16 @@ function rank(label, q) {
  * options : [{ label, hint? }] ou [string]
  * multi : suggestions pour le dernier élément d'une liste séparée par des virgules (cépages).
  */
-export default function Autocomplete({ value, onChange, onPick, options, multi = false, max = 7, browse = false, ...inputProps }) {
+export default function Autocomplete({ value, onChange, onPick, options, fallback, multi = false, max = 7, browse = false, ...inputProps }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [showAll, setShowAll] = useState(false); // liste complète : seulement juste après avoir touché le champ
   const listId = useId();
   const inputRef = useRef(null);
+  const closeTimer = useRef(null);
   const opts = useMemo(() => options.map((o) => (typeof o === 'string' ? { label: o } : o)), [options]);
+  // Liste de secours (ex. tout le pays) quand rien ne correspond dans la liste courte (la région).
+  const backup = useMemo(() => (fallback || []).map((o) => (typeof o === 'string' ? { label: o } : o)), [fallback]);
 
   const text = String(value ?? '');
   const head = multi ? text.slice(0, text.lastIndexOf(',') + 1) : '';
@@ -46,13 +49,18 @@ export default function Autocomplete({ value, onChange, onPick, options, multi =
     // Champ vide, ou champ qu'on vient de toucher : on montre toute la liste du pays.
     if (browse && (!query || showAll)) return opts.slice(0, 500);
     if (!query) return [];
-    return opts
-      .map((o) => ({ o, r: rank(o.label, query) }))
-      .filter((x) => x.r >= 0 && fold(x.o.label) !== query)
-      .sort((a, b) => a.r - b.r || a.o.label.length - b.o.label.length || a.o.label.localeCompare(b.o.label, 'fr'))
+    const search = (list) =>
+      list
+        .map((o) => ({ o, r: rank(o.label, query) }))
+        .filter((x) => x.r >= 0)
+        .sort((a, b) => a.r - b.r || a.o.label.length - b.o.label.length || a.o.label.localeCompare(b.o.label, 'fr'));
+    let found = search(opts);
+    if (!found.length && backup.length) found = search(backup);
+    return found
+      .filter((x) => fold(x.o.label) !== query)
       .slice(0, max)
       .map((x) => x.o);
-  }, [opts, query, max, browse, showAll]);
+  }, [opts, backup, query, max, browse, showAll]);
 
   function pick(o) {
     const next = multi ? `${head}${head ? ' ' : ''}${o.label}` : o.label;
@@ -84,10 +92,13 @@ export default function Autocomplete({ value, onChange, onPick, options, multi =
           setActive(0);
         }}
         onFocus={() => {
+          clearTimeout(closeTimer.current); // un retour rapide dans le champ ne doit pas refermer la liste
           setOpen(true);
           setShowAll(true);
         }}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={() => {
+          closeTimer.current = setTimeout(() => setOpen(false), 150);
+        }}
         onKeyDown={(e) => {
           if (!show) return;
           if (e.key === 'ArrowDown') {
