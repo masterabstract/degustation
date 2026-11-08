@@ -99,7 +99,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
           ))}
         </select>
         <span className="tiny muted" style={{ fontWeight: 400, marginTop: 4 }}>
-          {b.country === 'France' ? 'Vin français : noté sur 20 points. Géographie : la région rapporte 3 points et l’appellation 2 points, jugées séparément. La région est obligatoire, même pour un Vin de France.' : b.country ? 'Vin étranger : noté sur 23 points.' : 'Le pays décide du barème et des listes proposées ci-dessous.'}
+          {b.country === 'France' ? 'Vin français : noté sur 20 points.' : b.country ? 'Vin étranger : noté sur 23 points.' : 'Le pays décide du barème et des listes proposées ci-dessous.'}{b.country ? ' Géographie : la région rapporte 3 points et l’appellation 2 points, jugées séparément ; la région est donc obligatoire, même pour un Vin de France.' : ''}
         </span>
       </label>
       <label className="field">
@@ -129,7 +129,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
       </div>
       <GrapeRows rows={b.grape_mix} options={opts.grapes} onChange={(grape_mix) => setB((x) => ({ ...x, grape_mix }))} />
       <div className="field">
-        <span>{b.country && b.country !== 'France' ? 'Région viticole (3 points)' : b.country === 'France' ? 'Région viticole *' : 'Région viticole'}</span>
+        <span>Région viticole *</span>
         <Autocomplete
           value={b.region}
           onChange={set('region')}
@@ -144,21 +144,6 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
           aria-label="Région"
         />
       </div>
-      {b.country && b.country !== 'France' && (
-        <div className="panel stack" style={{ background: '#fbf6ec' }}>
-          <p className="tiny muted" style={{ margin: 0 }}>
-            Vin étranger (noté sur 23) : précisez la géographie, du plus précis au plus large. Chaque niveau trouvé par les candidats rapporte des points : appellation 5, sous-région 4, région 3, grande zone 2. Exemple pour un Barolo : Barolo, Langhe, Piémont, Italie du Nord. Un niveau laissé vide ne peut rapporter de points à personne.
-          </p>
-          <label className="field">
-            <span>Sous-région ou vallée</span>
-            <input className="input" value={b.subregion} onChange={set('subregion')} placeholder="Ex : Langhe, Napa Valley, Rioja Alta, Valle de Uco" maxLength={80} aria-label="Sous-région ou vallée" />
-          </label>
-          <label className="field">
-            <span>Grande zone (plus large que la région)</span>
-            <input className="input" value={b.zone} onChange={set('zone')} placeholder="Ex : Italie du Nord, Côte Ouest, Cuyo" maxLength={80} aria-label="Grande zone" />
-          </label>
-        </div>
-      )}
       <div className="field">
         <span className="chip-group-label" style={{ fontWeight: 600, color: 'var(--encre)', fontSize: '0.9rem' }}>
           Couleur
@@ -196,7 +181,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
       </label>
       <p className="tiny muted" style={{ margin: 0 }}>* champ obligatoire</p>
       <div className="row">
-        <button className="btn" disabled={busy || !b.producer.trim() || !b.country || !rowsText(b.grape_mix) || (!b.non_vintage && !String(b.vintage).trim())}>
+        <button className="btn" disabled={busy || !b.producer.trim() || !b.country || !b.region.trim() || !rowsText(b.grape_mix) || (!b.non_vintage && !String(b.vintage).trim())}>
           {initial?.id ? 'Enregistrer les modifications' : 'Enregistrer la bouteille'}
         </button>
         {onCancel && (

@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Capsule } from '@/components/ui';
 
 export default function Home() {
   const router = useRouter();
@@ -14,11 +13,7 @@ export default function Home() {
     <main>
       <section className="hero">
         <div className="hero-inner">
-          <div className="capsule-row" aria-hidden="true">
-            <Capsule n={1} size="sm" />
-            <Capsule n={2} size="sm" />
-            <Capsule n={3} size="sm" />
-          </div>
+          <img src="/logo.webp" alt="" width={500} height={500} className="hero-logo" fetchPriority="high" />
           <h1>La Confrérie du Pif</h1>
           <p className="hero-eyebrow">Dégustations à l’aveugle entre amis</p>
           <p>Notez chaque vin, tentez vos pronostics, et découvrez les bouteilles une à une au fil de la soirée.</p>

@@ -190,7 +190,7 @@ function Rules() {
           <tbody>
             <tr><td>Cépage(s)</td><td>{F.grapes}</td><td>{E.grapes}</td></tr>
             <tr><td>Pays</td><td>{F.country}</td><td>{E.country}</td></tr>
-            <tr><td>Géographie</td><td>{F.geo} (région {BAREME.geoFranceSplit.region} + appellation {BAREME.geoFranceSplit.appellation})</td><td>{E.geo}</td></tr>
+            <tr><td>Géographie (région {BAREME.geoSplit.region} + appellation {BAREME.geoSplit.appellation})</td><td>{F.geo}</td><td>{E.geo}</td></tr>
             <tr><td>Millésime</td><td>{F.vintage}</td><td>{E.vintage}</td></tr>
             <tr><td><strong>Total</strong></td><td><strong>{F.total}</strong></td><td><strong>{E.total}</strong></td></tr>
           </tbody>
@@ -199,7 +199,7 @@ function Rules() {
           <strong>Cépages</strong> : un monocépage exact rapporte 10 points. Pour un assemblage, chaque cépage trouvé rapporte sa part (70 % de Merlot = 7 points), et chaque cépage cité à tort retire {BAREME.grapeWrongPenalty} point.
         </p>
         <p>
-          <strong>Géographie, vin français</strong> : on gagne 3 points si on trouve la région et 2 points si on trouve l’appellation, soit 5 points au total. Les deux réponses sont jugées séparément : l’appellation exacte sans la bonne région ne rapporte que 2 points, ce qui arrive souvent avec les Vins de France (sans appellation, ils peuvent venir de n’importe quelle région). <strong>Vin étranger</strong> : appellation ou indication exacte 5, sous-région ou vallée 4, région 3, grande zone (plus large que la région) 2. Ces niveaux ne se cumulent pas : seul le meilleur compte.
+          <strong>Géographie</strong> (tous les vins) : on gagne 3 points si on trouve la région et 2 points si on trouve l’appellation, soit 5 points au total. Les deux réponses sont jugées séparément : l’appellation exacte sans la bonne région ne rapporte que 2 points, ce qui arrive souvent avec les Vins de France (sans appellation, ils peuvent venir de n’importe quelle région).
         </p>
         <p>
           <strong>Millésime</strong> : 3 points pour l’année exacte, puis des points en moins à chaque année d’écart, moins vite pour les vins anciens :
@@ -237,6 +237,7 @@ function Join({ data, code, onJoined }) {
   const [other, setOther] = useState(participants.length === 0);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [entered, setEntered] = useState(false);
 
   async function join() {
     setBusy(true);
@@ -252,11 +253,14 @@ function Join({ data, code, onJoined }) {
     }
   }
 
+  if (!entered) return <Welcome tasting={tasting} count={participants.length} onEnter={() => setEntered(true)} />;
+
   return (
     <main>
       <Band title={tasting.name} sub={tasting.event_date ? fmtDate(tasting.event_date) : 'La Confrérie du Pif'} back="/" />
       <div className="page stack">
         <div className="panel stack">
+          <img src="/logo.webp" alt="" width={96} height={96} className="join-logo" />
           <h2>Qui êtes-vous ?</h2>
           {!other && (
             <>
@@ -301,6 +305,51 @@ function Join({ data, code, onJoined }) {
           </button>
         </div>
       </div>
+    </main>
+  );
+}
+
+// Page d'accueil des participants qui arrivent par le lien ou le code de la soirée.
+const PHASE_LINE = {
+  preparation: 'La soirée se prépare : enregistrez vos bouteilles.',
+  degustation: 'La dégustation a commencé, rejoignez la tablée !',
+  revelation: 'Les bouteilles sont en train d’être révélées.',
+  revelee: 'La soirée est terminée : découvrez le palmarès.',
+};
+function Welcome({ tasting, count, onEnter }) {
+  return (
+    <main className="welcome">
+      <section className="welcome-hero">
+        <img src="/logo.webp" alt="La Confrérie du Pif, dégustation à l’aveugle" width={500} height={500} className="welcome-logo" fetchPriority="high" />
+        <p className="welcome-eyebrow">Vous êtes convié à</p>
+        <h1>{tasting.name}</h1>
+        {tasting.event_date && <p className="welcome-date">{fmtDate(tasting.event_date)}</p>}
+        {PHASE_LINE[tasting.phase] && <p className="welcome-phase">{PHASE_LINE[tasting.phase]}</p>}
+        <button className="btn gold block welcome-cta" onClick={onEnter}>
+          Entrer dans la Confrérie
+        </button>
+        {count > 0 && <p className="welcome-count">{count} {count > 1 ? 'confrères inscrits' : 'confrère inscrit'}</p>}
+      </section>
+      <section className="page stack">
+        <h2 className="welcome-title">Le déroulé de la soirée</h2>
+        <ol className="welcome-steps">
+          <li>
+            <strong>Vos bouteilles, en secret</strong>
+            <span>Enregistrez le vin que vous apportez. Personne ne le voit avant la révélation, pas même l’organisateur.</span>
+          </li>
+          <li>
+            <strong>À l’aveugle, le nez dans le verre</strong>
+            <span>Pour chaque vin : votre note, vos arômes, puis vos pronostics (pays, région, appellation, cépages, millésime).</span>
+          </li>
+          <li>
+            <strong>La révélation</strong>
+            <span>Les bouteilles sont dévoilées une à une, les points tombent et le meilleur pif de la soirée est couronné.</span>
+          </li>
+        </ol>
+        <button className="btn block" onClick={onEnter}>
+          C’est parti
+        </button>
+      </section>
     </main>
   );
 }

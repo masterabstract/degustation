@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { api, Band, Notice, Capsule, Chips, Scale, NoteInput, Loading, plural } from './ui';
 import Autocomplete from './Autocomplete';
 import RegionMap from './RegionMap';
+import AromaPicker from './AromaPicker';
 import { optionsFor, fillFromAppellation, fillFromRegion, describePatch, regionOptions, appellationOptions, grapeOptions, appellationGrapes } from '@/lib/autofill';
 import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
 import { BAREME, VINTAGE_DECADES } from '@/lib/bareme';
@@ -259,8 +260,8 @@ export default function SheetPage({ code, number }) {
             </Crit>
             <Crit n={2} title={SCALES.intensite_visuelle.label}>{sc('intensite_visuelle')}</Crit>
             <Crit n={3} title={SCALES.intensite_nez.label}>{sc('intensite_nez')}</Crit>
-            <Crit n={4} title="Familles aromatiques" hint="Plusieurs choix possibles.">
-              <Chips multi options={AROMES} value={r.aromes} onChange={(v) => change('rating', { aromes: v })} disabled={locked} />
+            <Crit n={4} title="Arômes" hint="Ouvrez une famille et touchez les arômes que vous sentez (plusieurs choix possibles). Primaires : ceux du raisin ; secondaires : ceux de la fermentation ; tertiaires : ceux de l’élevage et du vieillissement.">
+              <AromaPicker value={r.aromes} onChange={(v) => change('rating', { aromes: v })} disabled={locked} />
             </Crit>
             <Crit n={5} title={SCALES.acidite.label}>{sc('acidite')}</Crit>
             <Crit n={6} title={SCALES.tanins.label}>{sc('tanins')}</Crit>
@@ -300,10 +301,10 @@ export default function SheetPage({ code, number }) {
               </select>
             </Crit>
             <Crit
-              title="Région, sous-région ou zone"
+              title="Région"
               n={2}
-              pts={pred.country === 'France' ? '3 pts' : pred.country ? '2 à 4 pts' : '2 à 4 pts'}
-              hint={`Touchez la région sur la carte ou tapez son nom : les appellations et les cépages proposés se limitent ensuite à cette région. ${pred.country === 'France' ? 'Vin français : la bonne région rapporte 3 points. Elle est jugée séparément de l’appellation : pensez à la remplir, même pour un Vin de France.' : pred.country ? 'Vin étranger : si l’appellation est fausse, une bonne réponse plus large rapporte quand même : sous-région 4, région 3, grande zone 2 (seul le meilleur niveau compte).' : 'Choisissez d’abord le pays.'}`}
+              pts="3 pts"
+              hint={`Touchez la région sur la carte ou tapez son nom : les appellations et les cépages proposés se limitent ensuite à cette région. La bonne région rapporte 3 points. Elle est jugée séparément de l’appellation : pensez à la remplir, même pour un Vin de France.${pred.country ? '' : ' Choisissez d’abord le pays.'}`}
             >
               <RegionMap
                 country={pred.country}
@@ -338,8 +339,8 @@ export default function SheetPage({ code, number }) {
             <Crit
               title="Appellation"
               n={3}
-              pts={pred.country === 'France' ? '+2 pts' : '5 pts'}
-              hint={`${predOpts.inRegion ? `Appellations de la région ${pred.region}${predOpts.generic ? `, plus ${predOpts.generic} pour les vins sans appellation` : ''}. Une autre appellation du pays ? Tapez son nom, elle sera proposée. ` : 'Choisissez d’abord la région pour réduire la liste. '}${pred.country === 'France' ? 'Vin français : l’appellation exacte rapporte 2 points, qui s’ajoutent aux 3 points de la région si celle-ci est juste. L’appellation exacte sans la bonne région ne rapporte que 2 points.' : 'Appellation exacte : 5 points.'}`}
+              pts="+2 pts"
+              hint={`${predOpts.inRegion ? `Appellations de la région ${pred.region}${predOpts.generic ? `, plus ${predOpts.generic} pour les vins sans appellation` : ''}. Une autre appellation du pays ? Tapez son nom, elle sera proposée. ` : 'Choisissez d’abord la région pour réduire la liste. '}L’appellation exacte rapporte 2 points, qui s’ajoutent aux 3 points de la région si celle-ci est juste. L’appellation exacte sans la bonne région ne rapporte que 2 points.`}
             >
               <Autocomplete
                 value={pred.appellation}

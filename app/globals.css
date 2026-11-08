@@ -298,6 +298,48 @@ table.grid th:first-child, table.grid td:first-child { text-align: left; positio
 .hero h1 { font-family: var(--serif); font-weight: 600; font-size: 2.6rem; line-height: 1.05; margin: 18px 0 10px; }
 .hero p { color: var(--or-clair); font-size: 1.05rem; max-width: 34ch; }
 .capsule-row { display: flex; gap: 10px; }
+.hero-logo { display: block; width: min(200px, 52vw); height: auto; margin: -16px 0 0 -8px; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35)); }
+
+/* ---------- Accueil des participants ---------- */
+.welcome-hero {
+  background: radial-gradient(ellipse at 50% 30%, var(--bordeaux) 0%, var(--lie) 70%);
+  color: var(--creme);
+  text-align: center;
+  padding: 28px 20px 30px;
+  border-bottom: 3px solid var(--or);
+  display: flex; flex-direction: column; align-items: center;
+}
+.welcome-logo {
+  width: min(300px, 78vw); height: auto;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.45));
+  animation: welcome-in 0.7s ease-out both;
+}
+.welcome-eyebrow { font-family: var(--serif); font-style: italic; font-size: 1.15rem; color: var(--or-clair); margin: 14px 0 0; }
+.welcome-hero h1 { font-family: var(--serif); font-weight: 600; font-size: 2.3rem; line-height: 1.08; margin: 2px 0 6px; max-width: 18ch; overflow-wrap: anywhere; }
+.welcome-date { color: var(--or); font-weight: 600; margin: 0; text-transform: capitalize; }
+.welcome-phase { color: var(--or-clair); font-size: 0.95rem; margin: 10px 0 0; max-width: 32ch; }
+.welcome-cta { max-width: 340px; margin-top: 22px; font-size: 1.05rem; }
+.welcome-count { font-size: 0.85rem; color: var(--or-clair); opacity: 0.8; margin: 10px 0 0; }
+.welcome-title { font-family: var(--serif); font-size: 1.6rem; text-align: center; margin: 8px 0 0; color: var(--lie); }
+.welcome-steps { list-style: none; counter-reset: etape; padding: 0; margin: 0; display: grid; gap: 12px; }
+.welcome-steps li {
+  counter-increment: etape;
+  background: var(--papier); border: 1px solid var(--trait); border-radius: 14px;
+  padding: 14px 16px 14px 62px; position: relative; display: grid; gap: 2px;
+}
+.welcome-steps li::before {
+  content: counter(etape);
+  position: absolute; left: 14px; top: 14px;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--lie); color: var(--or-clair); border: 2px solid var(--or);
+  display: grid; place-items: center;
+  font-family: var(--serif); font-weight: 600; font-size: 1.2rem;
+}
+.welcome-steps strong { color: var(--lie); }
+.welcome-steps span { color: var(--taupe); font-size: 0.93rem; }
+.join-logo { width: 96px; height: 96px; align-self: center; margin-bottom: -6px; }
+@keyframes welcome-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .welcome-logo { animation: none; } }
 .capsule-row .capsule:nth-child(2) { opacity: 0.8; }
 .capsule-row .capsule:nth-child(3) { opacity: 0.6; }
 
@@ -409,3 +451,14 @@ details[open] > summary::before { content: '− '; }
 .carte-zone.conseil.on { fill: var(--bordeaux-2); stroke: var(--bordeaux-2); }
 .carte-region.conseil.on .carte-point { fill: var(--bordeaux); }
 .hero .hero-eyebrow { font-family: var(--serif); font-style: italic; font-size: 1.25rem; color: var(--or); margin: -4px 0 12px; }
+
+/* Fiche : roue des arômes */
+.aroma-picker { display: flex; flex-direction: column; gap: 10px; }
+.aroma-selected { display: flex; flex-direction: column; gap: 6px; }
+.aroma-origin { margin-top: 4px; }
+.aroma-family { border: 1px solid var(--trait); border-radius: 12px; margin-top: 6px; background: var(--papier); overflow: hidden; }
+.aroma-family.open { border-color: var(--or-clair); }
+.aroma-family-head { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 11px 14px; background: none; border: 0; font: inherit; font-weight: 600; color: var(--lie); cursor: pointer; text-align: left; min-height: 44px; }
+.aroma-count { display: inline-flex; align-items: center; gap: 8px; color: var(--taupe); font-size: 1.1rem; }
+.aroma-chips { padding: 0 12px 12px; }
+.chip-hint { font-weight: 400; opacity: 0.7; font-size: 0.85em; }

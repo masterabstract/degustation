@@ -132,10 +132,14 @@ function Wines({ data }) {
             <div className="wine-name">{wineTitle(w)}</div>
             <div className="facts">{[w.appellation, w.vintage].filter(Boolean).join(', ')}</div>
             <div className="facts">{[w.grapes, w.region, w.country, w.color].filter(Boolean).join(' · ')}</div>
-            <div className="facts">
-              {w.owner ? `Apportée par ${w.owner}` : ''}
-              {w.topAromas.length ? `${w.owner ? ' · ' : ''}${w.topAromas.join(', ').toLowerCase()}` : ''}
-            </div>
+            {w.owner && <div className="facts">Apportée par {w.owner}</div>}
+            {w.topAromas.length > 0 && (
+              <div className="facts">
+                Arômes cités : {(w.topFamilles || []).length ? <strong>{w.topFamilles.join(', ').toLowerCase()}</strong> : null}
+                {(w.topFamilles || []).length ? ' · ' : ''}
+                {w.topAromas.join(', ').toLowerCase()}
+              </div>
+            )}
             {w.notes && <div className="facts" style={{ fontStyle: 'italic' }}>« {w.notes} »</div>}
             {w.myNote !== null && <div className="tiny" style={{ marginTop: 4 }}>Votre note : {fmtNote(w.myNote)}/20</div>}
           </div>

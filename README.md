@@ -28,7 +28,7 @@ Site web pour organiser une dégustation de vin à l'aveugle : fiches de dégust
 - `lib/bareme.js` : barème unique (20 points vin français, 23 points vin étranger), identique pour tous et reproductible.
 - `lib/scoring.js` : moyennes, classements et résumé.
 - `lib/vins/` : base des vins préchargée (1 009 appellations dont 68 IGP et les vins sans appellation comme Vin de France, 150 régions, 546 cépages, classés par pays).
-- `lib/constants.js` : listes de choix (robes, arômes, pays).
+- `lib/constants.js` : listes de choix (robes, roue des arômes : 22 familles et 147 arômes, pays).
 - `app/api/` : toutes les routes serveur (aucune information secrète n'en sort avant la révélation).
 - `/api/sante` : page de contrôle après la mise en ligne.
 

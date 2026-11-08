@@ -1,7 +1,7 @@
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body, cleanText } from '@/lib/http';
 import { requireParticipant } from '@/lib/auth';
-import { ALL_ROBES, AROMES, SCALES, COLORS, COUNTRIES } from '@/lib/constants';
+import { ALL_ROBES, AROMES, AROMES_ANCIENS, SCALES, COLORS, COUNTRIES } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +16,7 @@ function cleanRating(r) {
   if (note !== null && (Number.isNaN(note) || note < 0 || note > 20)) throw new HttpError(400, 'La note doit être entre 0 et 20.');
   const out = {
     robe: ALL_ROBES.includes(r.robe) ? r.robe : null,
-    aromes: Array.isArray(r.aromes) ? [...new Set(r.aromes.filter((a) => AROMES.includes(a)))] : [],
+    aromes: Array.isArray(r.aromes) ? [...new Set(r.aromes.filter((a) => AROMES.includes(a) || AROMES_ANCIENS.includes(a)))].slice(0, 40) : [],
     note,
     commentaire: r.commentaire ? String(r.commentaire).slice(0, 1000) : null,
   };
