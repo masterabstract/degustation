@@ -199,7 +199,7 @@ function Rules() {
           <strong>Cépages</strong> : un monocépage exact rapporte 10 points. Pour un assemblage, chaque cépage trouvé rapporte sa part (70 % de Merlot = 7 points), et chaque cépage cité à tort retire {BAREME.grapeWrongPenalty} point.
         </p>
         <p>
-          <strong>Géographie, vin français</strong> : la bonne région rapporte 3 points, et l’appellation exacte 2 points supplémentaires, soit 5 points au total. Une appellation exacte compte aussi comme la bonne région (3 + 2 = 5). <strong>Vin étranger</strong> : appellation ou indication exacte 5, sous-région ou vallée 4, région 3, grande zone (plus large que la région) 2. Ces niveaux ne se cumulent pas : seul le meilleur compte.
+          <strong>Géographie, vin français</strong> : on gagne 3 points si on trouve la région et 2 points si on trouve l’appellation, soit 5 points au total. Les deux réponses sont jugées séparément : l’appellation exacte sans la bonne région ne rapporte que 2 points, ce qui arrive souvent avec les Vins de France (sans appellation, ils peuvent venir de n’importe quelle région). <strong>Vin étranger</strong> : appellation ou indication exacte 5, sous-région ou vallée 4, région 3, grande zone (plus large que la région) 2. Ces niveaux ne se cumulent pas : seul le meilleur compte.
         </p>
         <p>
           <strong>Millésime</strong> : 3 points pour l’année exacte, puis des points en moins à chaque année d’écart, moins vite pour les vins anciens :

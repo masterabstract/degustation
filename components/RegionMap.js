@@ -8,7 +8,7 @@ import { fold } from './Autocomplete';
 const slug = (s) => fold(s).replace(/ /g, '-');
 const cache = {};
 
-export default function RegionMap({ country, value, onPick, disabled }) {
+export default function RegionMap({ country, value, onPick, disabled, suggested = [] }) {
   const [state, setState] = useState({ country: null, data: null });
 
   useEffect(() => {
@@ -32,6 +32,8 @@ export default function RegionMap({ country, value, onPick, disabled }) {
   const sel = fold(value);
   const pick = (name) => !disabled && onPick(name);
   const isSel = (name) => sel && fold(name) === sel;
+  const tip = new Set(suggested.map(fold)); // régions où l'on trouve les cépages notés
+  const isTip = (name) => tip.has(fold(name));
 
   return (
     <div className="carte">
@@ -43,7 +45,7 @@ export default function RegionMap({ country, value, onPick, disabled }) {
           <path
             key={a.region}
             d={a.d}
-            className={`carte-zone${isSel(a.region) ? ' on' : ''}`}
+            className={`carte-zone${isSel(a.region) ? ' on' : ''}${isTip(a.region) ? ' conseil' : ''}`}
             onClick={() => pick(a.region)}
           >
             <title>{a.region}</title>
@@ -53,7 +55,7 @@ export default function RegionMap({ country, value, onPick, disabled }) {
         {data.regions.map((r) => (
           <g
             key={r.name}
-            className={`carte-region${isSel(r.name) ? ' on' : ''}`}
+            className={`carte-region${isSel(r.name) ? ' on' : ''}${isTip(r.name) ? ' conseil' : ''}`}
             onClick={() => pick(r.name)}
             role="button"
             tabIndex={disabled ? -1 : 0}

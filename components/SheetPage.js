@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { api, Band, Notice, Capsule, Chips, Scale, NoteInput, Loading, plural } from './ui';
 import Autocomplete from './Autocomplete';
 import RegionMap from './RegionMap';
-import { optionsFor, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
+import { optionsFor, fillFromAppellation, fillFromRegion, describePatch, regionOptions, appellationOptions, grapeOptions, appellationGrapes } from '@/lib/autofill';
 import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
 import { BAREME, VINTAGE_DECADES } from '@/lib/bareme';
 
@@ -173,6 +173,16 @@ export default function SheetPage({ code, number }) {
   const next = bottles[idx + 1];
   const r = rating;
   const predOpts = optionsFor(pred.country, pred.region); // listes du pays, puis de la région pronostiqués
+  // Aide au pronostic : les cépages notés orientent les régions et appellations proposées,
+  // l'appellation choisie oriente les cépages proposés (rouges et blancs).
+  const regionHelp = regionOptions(predOpts.regions, pred.grapes, pred.country);
+  const appOptions = appellationOptions(predOpts.appellations, pred.grapes);
+  const grapeOpts = grapeOptions(predOpts.grapes, pred.appellation);
+  const appGrapes = appellationGrapes(pred.appellation);
+  const grapeList = String(pred.grapes || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const foldG = (x) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const hasGrape = (g) => grapeList.some((x) => foldG(x) === foldG(g));
+  const toggleGrape = (g) => change('pred', { grapes: (hasGrape(g) ? grapeList.filter((x) => foldG(x) !== foldG(g)) : [...grapeList, g]).join(', ') });
   const sc = (key) => (
     <Scale steps={SCALES[key].steps} none={SCALES[key].none} value={r[key]} onChange={(v) => change('rating', { [key]: v })} disabled={locked} />
   );
@@ -293,11 +303,12 @@ export default function SheetPage({ code, number }) {
               title="Région, sous-région ou zone"
               n={2}
               pts={pred.country === 'France' ? '3 pts' : pred.country ? '2 à 4 pts' : '2 à 4 pts'}
-              hint={`Touchez la région sur la carte ou tapez son nom : les appellations et les cépages proposés se limitent ensuite à cette région. ${pred.country === 'France' ? 'Vin français : la bonne région rapporte 3 points, l’appellation exacte 2 points de plus.' : pred.country ? 'Vin étranger : si l’appellation est fausse, une bonne réponse plus large rapporte quand même : sous-région 4, région 3, grande zone 2 (seul le meilleur niveau compte).' : 'Choisissez d’abord le pays.'}`}
+              hint={`Touchez la région sur la carte ou tapez son nom : les appellations et les cépages proposés se limitent ensuite à cette région. ${pred.country === 'France' ? 'Vin français : la bonne région rapporte 3 points. Elle est jugée séparément de l’appellation : pensez à la remplir, même pour un Vin de France.' : pred.country ? 'Vin étranger : si l’appellation est fausse, une bonne réponse plus large rapporte quand même : sous-région 4, région 3, grande zone 2 (seul le meilleur niveau compte).' : 'Choisissez d’abord le pays.'}`}
             >
               <RegionMap
                 country={pred.country}
                 value={pred.region}
+                suggested={regionHelp.suggested}
                 disabled={locked}
                 onPick={(name) => {
                   const patch = fillFromRegion({ ...pred, region: name }, name, filled.current);
@@ -307,7 +318,7 @@ export default function SheetPage({ code, number }) {
               <Autocomplete
                 value={pred.region}
                 onChange={(v) => change('pred', { region: v })}
-                options={predOpts.regions}
+                options={regionHelp.options}
                 browse
                 onPick={(o) => {
                   const patch = fillFromRegion({ ...pred, region: o.label }, o.label, filled.current);
@@ -318,24 +329,38 @@ export default function SheetPage({ code, number }) {
                 maxLength={80}
                 disabled={locked}
               />
+              {regionHelp.suggested.length > 0 && !locked && (
+                <div className="autofill-note">
+                  En tête de liste{pred.country ? ' et en doré sur la carte' : ''} : les régions où l’on trouve {grapeList.join(', ')}.
+                </div>
+              )}
             </Crit>
             <Crit
               title="Appellation"
               n={3}
               pts={pred.country === 'France' ? '+2 pts' : '5 pts'}
-              hint={`${predOpts.inRegion ? `Appellations de la région ${pred.region}${predOpts.generic ? `, plus ${predOpts.generic} pour les vins sans appellation` : ''}. Une autre appellation du pays ? Tapez son nom, elle sera proposée. ` : 'Choisissez d’abord la région pour réduire la liste. '}${pred.country === 'France' ? 'Vin français : l’appellation exacte rapporte 2 points en plus des 3 points de la région (elle compte aussi comme la bonne région), soit 5.' : 'Appellation exacte : 5 points.'}`}
+              hint={`${predOpts.inRegion ? `Appellations de la région ${pred.region}${predOpts.generic ? `, plus ${predOpts.generic} pour les vins sans appellation` : ''}. Une autre appellation du pays ? Tapez son nom, elle sera proposée. ` : 'Choisissez d’abord la région pour réduire la liste. '}${pred.country === 'France' ? 'Vin français : l’appellation exacte rapporte 2 points, qui s’ajoutent aux 3 points de la région si celle-ci est juste. L’appellation exacte sans la bonne région ne rapporte que 2 points.' : 'Appellation exacte : 5 points.'}`}
             >
               <Autocomplete
                 value={pred.appellation}
                 onChange={(v) => change('pred', { appellation: v })}
-                options={predOpts.appellations}
+                options={appOptions}
                 fallback={predOpts.inRegion ? predOpts.countryAppellations : undefined}
                 browse
                 onPick={(o) => {
-                  const patch = fillFromAppellation({ ...pred, appellation: o.label }, o.label, filled.current);
-                  if (patch) delete patch.color; // la couleur ne fait pas partie du barème
-                  if (patch && Object.keys(patch).length) change('pred', patch);
-                  setAutoNote(describePatch(patch));
+                  const autoGrapes = filled.current.grapes && pred.grapes === filled.current.grapes; // cépages remplis automatiquement avant
+                  const patch = fillFromAppellation({ ...pred, appellation: o.label }, o.label, filled.current) || {};
+                  delete patch.color; // la couleur ne fait pas partie du barème
+                  // Cépages : remplis seulement si l'appellation n'en a qu'un (Barolo = Nebbiolo).
+                  // Sinon on les propose (un cépage faux coûte un point) : voir sous « Cépage(s) ».
+                  const ag = appellationGrapes(o.label);
+                  if (!ag || ag.all.length !== 1) {
+                    delete patch.grapes;
+                    delete filled.current.grapes;
+                    if (autoGrapes) patch.grapes = ''; // on retire le cépage de l'appellation précédente
+                  }
+                  if (Object.keys(patch).length) change('pred', patch);
+                  setAutoNote(describePatch(Object.fromEntries(Object.entries(patch).filter(([, v]) => v))));
                 }}
                 placeholder="Tapez les premières lettres, ex : gev"
                 aria-label="Appellation"
@@ -354,7 +379,7 @@ export default function SheetPage({ code, number }) {
                 multi
                 value={pred.grapes}
                 onChange={(v) => change('pred', { grapes: v })}
-                options={predOpts.grapes}
+                options={grapeOpts}
                 fallback={predOpts.inRegion ? predOpts.countryGrapes : undefined}
                 browse
                 placeholder="Ex : Pinot Noir"
@@ -362,6 +387,23 @@ export default function SheetPage({ code, number }) {
                 maxLength={120}
                 disabled={locked}
               />
+              {appGrapes && !locked && (
+                <div className="grape-help">
+                  <div className="small muted">Cépages principaux du {appGrapes.name} : touchez pour ajouter ou retirer.</div>
+                  {[['Rouges', appGrapes.rouges], ['Blancs', appGrapes.blancs]].map(([label, list]) =>
+                    list.length ? (
+                      <div key={label} className="grape-help-row">
+                        <span className="tiny muted">{label}</span>
+                        {list.map((g) => (
+                          <button key={g} type="button" className="chip" aria-pressed={hasGrape(g)} onClick={() => toggleGrape(g)}>
+                            {g}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null
+                  )}
+                </div>
+              )}
             </Crit>
             <Crit title="Millésime" n={5} pts={`${BAREME.france.vintage} pts`} hint="Année exacte : 3 points. Ensuite on perd des points à chaque année d’écart, moins vite pour les vins anciens (tableau ci-dessous).">
               <div className="row">

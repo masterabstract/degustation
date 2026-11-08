@@ -99,7 +99,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
           ))}
         </select>
         <span className="tiny muted" style={{ fontWeight: 400, marginTop: 4 }}>
-          {b.country === 'France' ? 'Vin français : noté sur 20 points (géographie : bonne région 3 points, appellation exacte 2 points de plus).' : b.country ? 'Vin étranger : noté sur 23 points.' : 'Le pays décide du barème et des listes proposées ci-dessous.'}
+          {b.country === 'France' ? 'Vin français : noté sur 20 points. Géographie : la région rapporte 3 points et l’appellation 2 points, jugées séparément. La région est obligatoire, même pour un Vin de France.' : b.country ? 'Vin étranger : noté sur 23 points.' : 'Le pays décide du barème et des listes proposées ci-dessous.'}
         </span>
       </label>
       <label className="field">
@@ -129,7 +129,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
       </div>
       <GrapeRows rows={b.grape_mix} options={opts.grapes} onChange={(grape_mix) => setB((x) => ({ ...x, grape_mix }))} />
       <div className="field">
-        <span>{b.country && b.country !== 'France' ? 'Région viticole (3 points)' : 'Région viticole'}</span>
+        <span>{b.country && b.country !== 'France' ? 'Région viticole (3 points)' : b.country === 'France' ? 'Région viticole *' : 'Région viticole'}</span>
         <Autocomplete
           value={b.region}
           onChange={set('region')}

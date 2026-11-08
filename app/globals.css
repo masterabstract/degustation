@@ -397,3 +397,14 @@ details[open] > summary::before { content: '− '; }
 .archive-pick.on { border-color: var(--erreur); box-shadow: 0 0 0 1px var(--erreur) inset; }
 .archive-actions { position: sticky; bottom: 12px; box-shadow: 0 -6px 24px rgba(42, 26, 28, 0.12); z-index: 5; }
 .carte-credit { font-size: 0.65rem; color: var(--taupe); opacity: 0.8; margin-top: 2px; }
+
+/* Aide au pronostic : cépages de l'appellation */
+.grape-help { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.grape-help-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.grape-help-row > span { min-width: 52px; }
+/* Carte : régions où l'on trouve les cépages notés */
+.carte-zone.conseil { fill: var(--or-fonce); stroke: var(--or-fonce); }
+.carte-region.conseil .carte-point { fill: var(--or); r: 6px; stroke: var(--bordeaux); stroke-width: 1.5; }
+.carte-region.conseil .carte-nom { fill: var(--bordeaux); font-weight: 800; }
+.carte-zone.conseil.on { fill: var(--bordeaux-2); stroke: var(--bordeaux-2); }
+.carte-region.conseil.on .carte-point { fill: var(--bordeaux); }
