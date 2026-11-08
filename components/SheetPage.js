@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api, Band, Notice, Capsule, Chips, Scale, NoteInput, Loading } from './ui';
+import { api, Band, Notice, Capsule, Chips, Scale, NoteInput, Loading, plural } from './ui';
 import Autocomplete from './Autocomplete';
 import RegionMap from './RegionMap';
 import { optionsFor, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
@@ -179,7 +179,7 @@ export default function SheetPage({ code, number }) {
     <main>
       <Band
         title={`Vin n°${bottle.number}`}
-        sub={`${bottles.length} vins à déguster`}
+        sub={`${plural(bottles.length, 'vin')} à déguster`}
         back={`/t/${code}`}
         right={<Capsule n={bottle.number} />}
       />
@@ -275,7 +275,7 @@ export default function SheetPage({ code, number }) {
               title="Région, sous-région ou zone"
               n={2}
               pts="2 à 4 pts"
-              hint={`Touchez la région sur la carte ou tapez son nom : les appellations et les cépages proposés se limitent ensuite à cette région. Si l’appellation est fausse, une bonne région rapporte quand même : vin français 3 points ; vin étranger, sous-région 4, grande région 3, zone ou province 2.${pred.country ? '' : ' Choisissez d’abord le pays.'}`}
+              hint={`Touchez la région sur la carte ou tapez son nom : les appellations et les cépages proposés se limitent ensuite à cette région. Si l’appellation est fausse, une bonne région rapporte quand même : vin français 3 points ; vin étranger, sous-région 4, région 3, grande zone 2.${pred.country ? '' : ' Choisissez d’abord le pays.'}`}
             >
               <RegionMap
                 country={pred.country}
@@ -305,7 +305,7 @@ export default function SheetPage({ code, number }) {
               title="Appellation"
               n={3}
               pts="5 pts"
-              hint={predOpts.inRegion ? `Appellations de la région ${pred.region}, plus Vin de France pour les vins sans appellation. Une autre appellation du pays ? Tapez son nom, elle sera proposée. Appellation exacte : 5 points.` : 'Appellation exacte : 5 points. Choisissez d’abord la région pour réduire la liste.'}
+              hint={predOpts.inRegion ? `Appellations de la région ${pred.region}${predOpts.generic ? `, plus ${predOpts.generic} pour les vins sans appellation` : ''}. Une autre appellation du pays ? Tapez son nom, elle sera proposée. Appellation exacte : 5 points.` : 'Appellation exacte : 5 points. Choisissez d’abord la région pour réduire la liste.'}
             >
               <Autocomplete
                 value={pred.appellation}

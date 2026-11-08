@@ -38,3 +38,4 @@ Site web pour organiser une dégustation de vin à l'aveugle : fiches de dégust
 - Union européenne : Candiago et al. (2022), inventaire géographique des AOP viticoles européennes (CC BY 4.0).
 - États-Unis : AVA, UC Davis (CC0). Australie : Wine Australia (CC BY 4.0). Suisse : OFS / swisstopo. Autres pays : geoBoundaries.
 - Contours généralisés repris d'Open Wine Atlas (code MIT), regroupés par région viticole ; limites des pays et provinces : Natural Earth (domaine public).
+- Rattachement des appellations aux régions officielles : INAO (France), IVV (Portugal), Österreich Wein (Autriche), Swiss Wine (Suisse), Wines of Hungary (6 borrégió), Vina Croatia (4 régions), registre européen des AOP. Les appellations « parapluie » couvrant une province entière (Niederösterreich, Duna, Cava…) ne sont pas dessinées ; une aire mal géocodée dans la source (Valdeorras) est écartée.

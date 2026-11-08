@@ -129,7 +129,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
       </div>
       <GrapeRows rows={b.grape_mix} options={opts.grapes} onChange={(grape_mix) => setB((x) => ({ ...x, grape_mix }))} />
       <div className="field">
-        <span>{b.country && b.country !== 'France' ? 'Grande région viticole' : 'Région viticole'}</span>
+        <span>{b.country && b.country !== 'France' ? 'Région viticole (3 points)' : 'Région viticole'}</span>
         <Autocomplete
           value={b.region}
           onChange={set('region')}
@@ -147,15 +147,15 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
       {b.country && b.country !== 'France' && (
         <div className="panel stack" style={{ background: '#fbf6ec' }}>
           <p className="tiny muted" style={{ margin: 0 }}>
-            Vin étranger (noté sur 23) : précisez la géographie, chaque niveau trouvé par les candidats rapporte des points (appellation 5, sous-région 4, grande région 3, zone 2).
+            Vin étranger (noté sur 23) : précisez la géographie, du plus précis au plus large. Chaque niveau trouvé par les candidats rapporte des points : appellation 5, sous-région 4, région 3, grande zone 2. Exemple pour un Barolo : Barolo, Langhe, Piémont, Italie du Nord. Un niveau laissé vide ne peut rapporter de points à personne.
           </p>
           <label className="field">
             <span>Sous-région ou vallée</span>
-            <input className="input" value={b.subregion} onChange={set('subregion')} placeholder="Ex : Montalcino, Rutherford, Luján de Cuyo" maxLength={80} aria-label="Sous-région ou vallée" />
+            <input className="input" value={b.subregion} onChange={set('subregion')} placeholder="Ex : Langhe, Napa Valley, Rioja Alta, Valle de Uco" maxLength={80} aria-label="Sous-région ou vallée" />
           </label>
           <label className="field">
-            <span>Grande zone ou province</span>
-            <input className="input" value={b.zone} onChange={set('zone')} placeholder="Ex : Italie centrale, Californie, Castille" maxLength={80} aria-label="Grande zone ou province" />
+            <span>Grande zone (plus large que la région)</span>
+            <input className="input" value={b.zone} onChange={set('zone')} placeholder="Ex : Italie du Nord, Côte Ouest, Cuyo" maxLength={80} aria-label="Grande zone" />
           </label>
         </div>
       )}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api, Band, Notice, Loading, fmtDate, fmtNote } from '@/components/ui';
+import { api, Band, Notice, Loading, fmtDate, fmtNote, plural } from '@/components/ui';
 
 export default function Archives() {
   const [data, setData] = useState(null);
@@ -104,7 +104,7 @@ export default function Archives() {
                     )}
                   </div>
                   <div className="small muted">
-                    {[s.event_date ? fmtDate(s.event_date) : null, `${s.participants} dégustateurs`, `${s.vins} vins`].filter(Boolean).join(' · ')}
+                    {[s.event_date ? fmtDate(s.event_date) : null, plural(s.participants, 'dégustateur'), plural(s.vins, 'vin')].filter(Boolean).join(' · ')}
                   </div>
                   {s.meilleurVin.length > 0 && (
                     <p className="small" style={{ marginTop: 8 }}>

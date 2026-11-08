@@ -179,7 +179,7 @@ function Rules() {
           <strong>Cépages</strong> : un monocépage exact rapporte 10 points. Pour un assemblage, chaque cépage trouvé rapporte sa part (70 % de Merlot = 7 points), et chaque cépage cité à tort retire {BAREME.grapeWrongPenalty} point.
         </p>
         <p>
-          <strong>Géographie</strong> : vin français, appellation exacte 5 points, sinon bonne région 3 points. Vin étranger, appellation ou indication exacte 5, sous-région ou vallée 4, grande région 3, grande zone ou province 2. Les niveaux ne se cumulent pas : seul le meilleur compte.
+          <strong>Géographie</strong> : vin français, appellation exacte 5 points, sinon bonne région 3 points. Vin étranger, appellation ou indication exacte 5, sous-région ou vallée 4, région 3, grande zone (plus large que la région) 2. Les niveaux ne se cumulent pas : seul le meilleur compte.
         </p>
         <p>
           <strong>Millésime</strong> : 3 points pour l’année exacte, puis des points en moins à chaque année d’écart, moins vite pour les vins anciens :

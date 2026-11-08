@@ -215,6 +215,11 @@ export function fmtDate(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
+// « 1 vin », « 2 vins »
+export function plural(n, one, many = `${one}s`) {
+  return `${n} ${Math.abs(n) >= 2 ? many : one}`;
+}
+
 export function fmtNote(n) {
   return n === null || n === undefined ? '–' : String(n).replace('.', ',');
 }
