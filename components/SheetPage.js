@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, Band, Notice, Capsule, Chips, Scale, NoteInput, Loading } from './ui';
 import Autocomplete from './Autocomplete';
-import { APPELLATION_OPTIONS, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
+import { optionsFor, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
 import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
 import { BAREME, VINTAGE_DECADES } from '@/lib/bareme';
 
@@ -163,6 +163,7 @@ export default function SheetPage({ code, number }) {
   const prev = bottles[idx - 1];
   const next = bottles[idx + 1];
   const r = rating;
+  const predOpts = optionsFor(pred.country); // listes du pays pronostiqué
   const sc = (key) => (
     <Scale steps={SCALES[key].steps} none={SCALES[key].none} value={r[key]} onChange={(v) => change('rating', { [key]: v })} disabled={locked} />
   );
@@ -260,11 +261,20 @@ export default function SheetPage({ code, number }) {
             <p className="small muted">
               D’après vous, quel est ce vin ? Un vin français vaut {BAREME.france.total} points, un vin étranger {BAREME.foreign.total} points. Vos pronostics restent secrets jusqu’à la révélation.
             </p>
+            <Crit title="Pays (à choisir en premier)" pts={`${BAREME.france.country} ou ${BAREME.foreign.country} pts`} hint={`${BAREME.france.country} points si le vin est français, ${BAREME.foreign.country} points s’il est étranger.`}>
+              <select className="input" aria-label="Pays" value={pred.country} onChange={(e) => change('pred', { country: e.target.value })} disabled={locked}>
+                <option value="">Choisir un pays</option>
+                {COUNTRIES.map((x) => (
+                  <option key={x}>{x}</option>
+                ))}
+              </select>
+            </Crit>
             <Crit title="Appellation" pts="5 pts" hint="Appellation exacte : 5 points. Sinon, une bonne région rapporte quand même des points (champ suivant).">
               <Autocomplete
                 value={pred.appellation}
                 onChange={(v) => change('pred', { appellation: v })}
-                options={APPELLATION_OPTIONS}
+                options={predOpts.appellations}
+                browse
                 onPick={(o) => {
                   const patch = fillFromAppellation({ ...pred, appellation: o.label }, o.label, filled.current);
                   if (patch) delete patch.color; // la couleur ne fait pas partie du barème
@@ -287,7 +297,8 @@ export default function SheetPage({ code, number }) {
                 multi
                 value={pred.grapes}
                 onChange={(v) => change('pred', { grapes: v })}
-                options={GRAPES}
+                options={predOpts.grapes}
+                browse
                 placeholder="Ex : Pinot Noir"
                 aria-label="Cépage"
                 maxLength={120}
@@ -302,7 +313,8 @@ export default function SheetPage({ code, number }) {
               <Autocomplete
                 value={pred.region}
                 onChange={(v) => change('pred', { region: v })}
-                options={REGIONS}
+                options={predOpts.regions}
+                browse
                 onPick={(o) => {
                   const patch = fillFromRegion({ ...pred, region: o.label }, o.label, filled.current);
                   if (patch) change('pred', patch);
@@ -312,14 +324,6 @@ export default function SheetPage({ code, number }) {
                 maxLength={80}
                 disabled={locked}
               />
-            </Crit>
-            <Crit title="Pays" pts={`${BAREME.france.country} ou ${BAREME.foreign.country} pts`} hint={`${BAREME.france.country} points si le vin est français, ${BAREME.foreign.country} points s’il est étranger.`}>
-              <select className="input" aria-label="Pays" value={pred.country} onChange={(e) => change('pred', { country: e.target.value })} disabled={locked}>
-                <option value="">Choisir un pays</option>
-                {COUNTRIES.map((x) => (
-                  <option key={x}>{x}</option>
-                ))}
-              </select>
             </Crit>
             <Crit title="Millésime" pts={`${BAREME.france.vintage} pts`} hint="Année exacte : 3 points. Ensuite on perd des points à chaque année d’écart, moins vite pour les vins anciens (tableau ci-dessous).">
               <div className="row">

@@ -2,11 +2,11 @@
 
 import { useRef, useState } from 'react';
 import Autocomplete from './Autocomplete';
-import { APPELLATION_OPTIONS, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
+import { optionsFor, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
 import { api, Chips, Notice, Spinner } from './ui';
-import { COLORS, COUNTRIES, REGIONS, GRAPES } from '@/lib/constants';
+import { COLORS, COUNTRIES } from '@/lib/constants';
 
-const EMPTY = { producer: '', appellation: '', accepted_names: '', grape_mix: [{ name: '', pct: '' }], region: '', subregion: '', zone: '', country: 'France', color: null, wine_name: '', vintage: '', non_vintage: false, notes: '' };
+const EMPTY = { producer: '', appellation: '', grape_mix: [{ name: '', pct: '' }], region: '', subregion: '', zone: '', country: 'France', color: null, wine_name: '', vintage: '', non_vintage: false, notes: '' };
 
 const rowsFromText = (t) => {
   const names = String(t || '').split(',').map((x) => x.trim()).filter(Boolean);
@@ -42,6 +42,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
   const [scan, setScan] = useState({ state: 'idle', msg: null });
   const fileRef = useRef(null);
   const set = (k) => (v) => setB((x) => ({ ...x, [k]: v?.target ? v.target.value : v }));
+  const opts = optionsFor(b.country); // listes du pays choisi
 
   async function onPhoto(e) {
     const file = e.target.files?.[0];
@@ -90,6 +91,18 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
         </div>
       )}
       <label className="field">
+        <span>Pays *</span>
+        <select className="input" value={b.country || ''} onChange={set('country')} required aria-label="Pays">
+          <option value="">Choisir le pays du vin</option>
+          {COUNTRIES.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
+        <span className="tiny muted" style={{ fontWeight: 400, marginTop: 4 }}>
+          {b.country === 'France' ? 'Vin français : noté sur 20 points.' : b.country ? 'Vin étranger : noté sur 23 points.' : 'Le pays décide du barème et des listes proposées ci-dessous.'}
+        </span>
+      </label>
+      <label className="field">
         <span>Domaine, château ou maison *</span>
         <input className="input" value={b.producer} onChange={set('producer')} required maxLength={120} placeholder="Ex : Domaine Ogier" />
       </label>
@@ -98,7 +111,8 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
         <Autocomplete
           value={b.appellation}
           onChange={set('appellation')}
-          options={APPELLATION_OPTIONS}
+          options={opts.appellations}
+          browse
           onPick={(o) => {
             const patch = fillFromAppellation({ ...b, grapes: rowsText(b.grape_mix) }, o.label, filled.current);
             if (patch) {
@@ -113,44 +127,22 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
         />
         {autoNote && <div className="autofill-note">{autoNote}</div>}
       </div>
-      <details className="small">
-        <summary>Autres noms acceptés pour l’appellation (facultatif)</summary>
-        <input
-          className="input"
-          style={{ marginTop: 8 }}
-          value={b.accepted_names}
-          onChange={set('accepted_names')}
-          placeholder="Ex : St-Jo, Saint-Jo (séparés par des virgules)"
-          maxLength={300}
-          aria-label="Autres noms acceptés pour l’appellation"
+      <GrapeRows rows={b.grape_mix} options={opts.grapes} onChange={(grape_mix) => setB((x) => ({ ...x, grape_mix }))} />
+      <div className="field">
+        <span>{b.country && b.country !== 'France' ? 'Grande région viticole' : 'Région viticole'}</span>
+        <Autocomplete
+          value={b.region}
+          onChange={set('region')}
+          options={opts.regions}
+          browse
+          onPick={(o) => {
+            const patch = fillFromRegion(b, o.label, filled.current);
+            if (patch) setB((x) => ({ ...x, ...patch }));
+          }}
+          placeholder={b.country && b.country !== 'France' ? 'Ex : Toscane' : 'Ex : Vallée du Rhône'}
+          maxLength={80}
+          aria-label="Région"
         />
-      </details>
-      <GrapeRows rows={b.grape_mix} onChange={(grape_mix) => setB((x) => ({ ...x, grape_mix }))} />
-      <div className="grid2 collapse">
-        <div className="field">
-          <span>{b.country && b.country !== 'France' ? 'Grande région viticole' : 'Région viticole'}</span>
-          <Autocomplete
-            value={b.region}
-            onChange={set('region')}
-            options={REGIONS}
-            onPick={(o) => {
-              const patch = fillFromRegion(b, o.label, filled.current);
-              if (patch) setB((x) => ({ ...x, ...patch }));
-            }}
-            placeholder={b.country && b.country !== 'France' ? 'Ex : Toscane' : 'Ex : Vallée du Rhône'}
-            maxLength={80}
-            aria-label="Région"
-          />
-        </div>
-        <label className="field">
-          <span>Pays *</span>
-          <select className="input" value={b.country || ''} onChange={set('country')} required aria-label="Pays">
-            <option value="">Choisir</option>
-            {COUNTRIES.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </label>
       </div>
       {b.country && b.country !== 'France' && (
         <div className="panel stack" style={{ background: '#fbf6ec' }}>
@@ -217,7 +209,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
   );
 }
 
-function GrapeRows({ rows, onChange }) {
+function GrapeRows({ rows, options, onChange }) {
   const named = rows.filter((r) => r.name.trim());
   const filledPct = named.filter((r) => String(r.pct).trim() !== '');
   const sum = Math.round(filledPct.reduce((a, r) => a + Number(String(r.pct).replace(',', '.') || 0), 0) * 10) / 10;
@@ -231,7 +223,7 @@ function GrapeRows({ rows, onChange }) {
         {rows.map((r, i) => (
           <div key={i} className="row" style={{ flexWrap: 'nowrap', gap: 6 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <Autocomplete value={r.name} onChange={(v) => update(i, { name: v })} options={GRAPES} placeholder={i === 0 ? 'Ex : Merlot' : 'Autre cépage'} maxLength={60} aria-label={`Cépage ${i + 1}`} />
+              <Autocomplete value={r.name} onChange={(v) => update(i, { name: v })} options={options} browse placeholder={i === 0 ? 'Ex : Merlot' : 'Autre cépage'} maxLength={60} aria-label={`Cépage ${i + 1}`} />
             </div>
             {rows.length > 1 && (
               <>

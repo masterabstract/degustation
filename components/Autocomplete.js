@@ -30,9 +30,10 @@ function rank(label, q) {
  * options : [{ label, hint? }] ou [string]
  * multi : suggestions pour le dernier élément d'une liste séparée par des virgules (cépages).
  */
-export default function Autocomplete({ value, onChange, onPick, options, multi = false, max = 7, ...inputProps }) {
+export default function Autocomplete({ value, onChange, onPick, options, multi = false, max = 7, browse = false, ...inputProps }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const [showAll, setShowAll] = useState(false); // liste complète : seulement juste après avoir touché le champ
   const listId = useId();
   const inputRef = useRef(null);
   const opts = useMemo(() => options.map((o) => (typeof o === 'string' ? { label: o } : o)), [options]);
@@ -42,6 +43,8 @@ export default function Autocomplete({ value, onChange, onPick, options, multi =
   const query = fold(multi ? text.slice(text.lastIndexOf(',') + 1) : text);
 
   const matches = useMemo(() => {
+    // Champ vide, ou champ qu'on vient de toucher : on montre toute la liste du pays.
+    if (browse && (!query || showAll)) return opts.slice(0, 500);
     if (!query) return [];
     return opts
       .map((o) => ({ o, r: rank(o.label, query) }))
@@ -49,7 +52,7 @@ export default function Autocomplete({ value, onChange, onPick, options, multi =
       .sort((a, b) => a.r - b.r || a.o.label.length - b.o.label.length || a.o.label.localeCompare(b.o.label, 'fr'))
       .slice(0, max)
       .map((x) => x.o);
-  }, [opts, query, max]);
+  }, [opts, query, max, browse, showAll]);
 
   function pick(o) {
     const next = multi ? `${head}${head ? ' ' : ''}${o.label}` : o.label;
@@ -77,9 +80,13 @@ export default function Autocomplete({ value, onChange, onPick, options, multi =
         onChange={(e) => {
           onChange(e.target.value);
           setOpen(true);
+          setShowAll(false);
           setActive(0);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setOpen(true);
+          setShowAll(true);
+        }}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={(e) => {
           if (!show) return;

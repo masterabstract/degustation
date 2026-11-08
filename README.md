@@ -25,7 +25,9 @@ Site web pour organiser une dégustation de vin à l'aveugle : fiches de dégust
 ## Fichiers importants
 
 - `supabase/schema.sql` : création des tables et des règles de sécurité (à coller dans Supabase).
-- `lib/scoring.js` : calcul des moyennes, du barème des pronostics et du résumé.
-- `lib/constants.js` : listes de choix (robes, arômes, régions, gammes de prix, barème).
+- `lib/bareme.js` : barème unique (20 points vin français, 23 points vin étranger), identique pour tous et reproductible.
+- `lib/scoring.js` : moyennes, classements et résumé.
+- `lib/vins/` : base des vins préchargée (934 appellations, 150 régions, 548 cépages, classés par pays).
+- `lib/constants.js` : listes de choix (robes, arômes, pays).
 - `app/api/` : toutes les routes serveur (aucune information secrète n'en sort avant la révélation).
 - `/api/sante` : page de contrôle après la mise en ligne.
