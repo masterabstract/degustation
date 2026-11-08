@@ -292,8 +292,8 @@ export default function SheetPage({ code, number }) {
             <Crit
               title="Région, sous-région ou zone"
               n={2}
-              pts="2 à 4 pts"
-              hint={`Touchez la région sur la carte ou tapez son nom : les appellations et les cépages proposés se limitent ensuite à cette région. Si l’appellation est fausse, une bonne région rapporte quand même : vin français 3 points ; vin étranger, sous-région 4, région 3, grande zone 2.${pred.country ? '' : ' Choisissez d’abord le pays.'}`}
+              pts={pred.country === 'France' ? '3 pts' : pred.country ? '2 à 4 pts' : '2 à 4 pts'}
+              hint={`Touchez la région sur la carte ou tapez son nom : les appellations et les cépages proposés se limitent ensuite à cette région. ${pred.country === 'France' ? 'Vin français : la bonne région rapporte 3 points, l’appellation exacte 2 points de plus.' : pred.country ? 'Vin étranger : si l’appellation est fausse, une bonne réponse plus large rapporte quand même : sous-région 4, région 3, grande zone 2 (seul le meilleur niveau compte).' : 'Choisissez d’abord le pays.'}`}
             >
               <RegionMap
                 country={pred.country}
@@ -322,8 +322,8 @@ export default function SheetPage({ code, number }) {
             <Crit
               title="Appellation"
               n={3}
-              pts="5 pts"
-              hint={predOpts.inRegion ? `Appellations de la région ${pred.region}${predOpts.generic ? `, plus ${predOpts.generic} pour les vins sans appellation` : ''}. Une autre appellation du pays ? Tapez son nom, elle sera proposée. Appellation exacte : 5 points.` : 'Appellation exacte : 5 points. Choisissez d’abord la région pour réduire la liste.'}
+              pts={pred.country === 'France' ? '+2 pts' : '5 pts'}
+              hint={`${predOpts.inRegion ? `Appellations de la région ${pred.region}${predOpts.generic ? `, plus ${predOpts.generic} pour les vins sans appellation` : ''}. Une autre appellation du pays ? Tapez son nom, elle sera proposée. ` : 'Choisissez d’abord la région pour réduire la liste. '}${pred.country === 'France' ? 'Vin français : l’appellation exacte rapporte 2 points en plus des 3 points de la région (elle compte aussi comme la bonne région), soit 5.' : 'Appellation exacte : 5 points.'}`}
             >
               <Autocomplete
                 value={pred.appellation}

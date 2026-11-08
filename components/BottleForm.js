@@ -99,7 +99,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
           ))}
         </select>
         <span className="tiny muted" style={{ fontWeight: 400, marginTop: 4 }}>
-          {b.country === 'France' ? 'Vin français : noté sur 20 points.' : b.country ? 'Vin étranger : noté sur 23 points.' : 'Le pays décide du barème et des listes proposées ci-dessous.'}
+          {b.country === 'France' ? 'Vin français : noté sur 20 points (géographie : bonne région 3 points, appellation exacte 2 points de plus).' : b.country ? 'Vin étranger : noté sur 23 points.' : 'Le pays décide du barème et des listes proposées ci-dessous.'}
         </span>
       </label>
       <label className="field">
