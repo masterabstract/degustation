@@ -4,8 +4,10 @@ import '@fontsource-variable/manrope/wght.css';
 import './globals.css';
 
 export const metadata = {
-  title: 'Dégustation à l’aveugle',
-  description: 'Fiches de dégustation, pronostics et révélation finale.',
+  title: { default: 'La Confrérie du Pif', template: '%s · La Confrérie du Pif' },
+  description: 'Dégustations à l’aveugle entre amis : fiches, pronostics, révélation et palmarès.',
+  applicationName: 'La Confrérie du Pif',
+  appleWebApp: { title: 'Confrérie du Pif' },
   robots: { index: false, follow: false },
 };
 

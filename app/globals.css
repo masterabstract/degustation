@@ -408,3 +408,4 @@ details[open] > summary::before { content: '− '; }
 .carte-region.conseil .carte-nom { fill: var(--bordeaux); font-weight: 800; }
 .carte-zone.conseil.on { fill: var(--bordeaux-2); stroke: var(--bordeaux-2); }
 .carte-region.conseil.on .carte-point { fill: var(--bordeaux); }
+.hero .hero-eyebrow { font-family: var(--serif); font-style: italic; font-size: 1.25rem; color: var(--or); margin: -4px 0 12px; }

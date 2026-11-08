@@ -19,8 +19,9 @@ export default function Home() {
             <Capsule n={2} size="sm" />
             <Capsule n={3} size="sm" />
           </div>
-          <h1>Dégustation à l’aveugle</h1>
-          <p>Notez chaque vin, tentez vos pronostics, et découvrez les bouteilles à la fin de la soirée.</p>
+          <h1>La Confrérie du Pif</h1>
+          <p className="hero-eyebrow">Dégustations à l’aveugle entre amis</p>
+          <p>Notez chaque vin, tentez vos pronostics, et découvrez les bouteilles une à une au fil de la soirée.</p>
         </div>
       </section>
 

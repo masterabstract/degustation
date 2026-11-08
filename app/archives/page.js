@@ -62,7 +62,7 @@ export default function Archives() {
 
   return (
     <main>
-      <Band title="Archives" sub="Toutes les soirées révélées et le palmarès des dégustateurs" back="/" />
+      <Band title="Archives de la Confrérie" sub="Toutes les soirées révélées et le palmarès des dégustateurs" back="/" />
       <div className="page">
         <div className="sticky-tabs">
           <nav className="tabs" role="tablist">

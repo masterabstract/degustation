@@ -254,7 +254,7 @@ function Join({ data, code, onJoined }) {
 
   return (
     <main>
-      <Band title={tasting.name} sub={tasting.event_date ? fmtDate(tasting.event_date) : 'Dégustation à l’aveugle'} back="/" />
+      <Band title={tasting.name} sub={tasting.event_date ? fmtDate(tasting.event_date) : 'La Confrérie du Pif'} back="/" />
       <div className="page stack">
         <div className="panel stack">
           <h2>Qui êtes-vous ?</h2>

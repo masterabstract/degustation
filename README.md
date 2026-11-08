@@ -1,4 +1,4 @@
-# Dégustation à l'aveugle
+# La Confrérie du Pif · dégustations à l’aveugle
 
 Site web pour organiser une dégustation de vin à l'aveugle : fiches de dégustation sur téléphone, pronostics, révélation finale et classements.
 
