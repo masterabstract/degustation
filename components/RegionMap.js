@@ -79,7 +79,10 @@ export default function RegionMap({ country, value, onPick, disabled }) {
           ))}
         </div>
       )}
-      <div className="carte-aide">Touchez une région sur la carte ou tapez son nom.</div>
+      <div className="carte-aide">
+        Touchez une région sur la carte ou tapez son nom.{data.credit ? ' Zones colorées : aires officielles des appellations.' : ''}
+      </div>
+      {data.credit && <div className="carte-credit">{data.credit}</div>}
     </div>
   );
 }

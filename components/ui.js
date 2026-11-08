@@ -4,9 +4,10 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 
 // ---------- Appels au serveur ----------
-export async function api(path, { method = 'GET', body } = {}) {
+export async function api(path, { method = 'GET', body, keepalive = false } = {}) {
   const res = await fetch(path, {
     method,
+    keepalive, // la requête part même si la page se ferme juste après
     headers: body ? { 'Content-Type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
     cache: 'no-store',

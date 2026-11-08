@@ -376,9 +376,9 @@ details[open] > summary::before { content: '− '; }
 .carte-mer { fill: #eef3f4; }
 .carte-voisins { fill: #e9e3d8; stroke: #fff; stroke-width: 0.6; }
 .carte-pays { fill: var(--papier); stroke: var(--trait-fort); stroke-width: 0.8; }
-.carte-zone { fill: #efdfb6; stroke: none; cursor: pointer; transition: fill 0.15s; }
-.carte-zone:hover { fill: var(--or-clair); }
-.carte-zone.on { fill: var(--bordeaux-2); }
+.carte-zone { fill: #cfa64e; fill-rule: evenodd; stroke: #cfa64e; stroke-width: 0.4; cursor: pointer; transition: fill 0.15s; }
+.carte-zone:hover { fill: var(--or-fonce); stroke: var(--or-fonce); }
+.carte-zone.on { fill: var(--bordeaux-2); stroke: var(--bordeaux-2); }
 .carte-limites { fill: none; stroke: #fff; stroke-width: 1.2; pointer-events: none; }
 .carte-region { cursor: pointer; }
 .carte-region:focus { outline: none; }
@@ -396,3 +396,4 @@ details[open] > summary::before { content: '− '; }
 .archive-pick input { width: 22px; height: 22px; margin-top: 4px; accent-color: var(--erreur); flex: none; }
 .archive-pick.on { border-color: var(--erreur); box-shadow: 0 0 0 1px var(--erreur) inset; }
 .archive-actions { position: sticky; bottom: 12px; box-shadow: 0 -6px 24px rgba(42, 26, 28, 0.12); z-index: 5; }
+.carte-credit { font-size: 0.65rem; color: var(--taupe); opacity: 0.8; margin-top: 2px; }

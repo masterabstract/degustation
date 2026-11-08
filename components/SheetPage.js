@@ -86,9 +86,15 @@ export default function SheetPage({ code, number }) {
     dirty.current = { rating: false, prediction: false };
     setSave({ status: 'saving', msg: 'Enregistrement…' });
     try {
-      await api(`/api/t/${code}/sheet`, { method: 'PUT', body: payload });
-      setSave({ status: 'saved', msg: 'Enregistré' });
-      safeDel(`dg_${code}_${bottle.id}`);
+      await api(`/api/t/${code}/sheet`, { method: 'PUT', body: payload, keepalive: true });
+      // Si une autre modification est arrivée pendant l'envoi, elle part juste après :
+      // on n'affiche « Enregistré » que lorsque tout est vraiment enregistré.
+      if (dirty.current.rating || dirty.current.prediction) {
+        setSave({ status: 'pending', msg: 'Modification en cours…' });
+      } else {
+        setSave({ status: 'saved', msg: 'Enregistré' });
+        safeDel(`dg_${code}_${bottle.id}`);
+      }
     } catch (e) {
       if (payload.rating) dirty.current.rating = true;
       if (payload.prediction) dirty.current.prediction = true;

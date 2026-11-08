@@ -31,3 +31,10 @@ Site web pour organiser une dégustation de vin à l'aveugle : fiches de dégust
 - `lib/constants.js` : listes de choix (robes, arômes, pays).
 - `app/api/` : toutes les routes serveur (aucune information secrète n'en sort avant la révélation).
 - `/api/sante` : page de contrôle après la mise en ligne.
+
+## Sources des cartes (public/cartes)
+
+- France : INAO, délimitation parcellaire des AOC viticoles (Licence Ouverte 2.0).
+- Union européenne : Candiago et al. (2022), inventaire géographique des AOP viticoles européennes (CC BY 4.0).
+- États-Unis : AVA, UC Davis (CC0). Australie : Wine Australia (CC BY 4.0). Suisse : OFS / swisstopo. Autres pays : geoBoundaries.
+- Contours généralisés repris d'Open Wine Atlas (code MIT), regroupés par région viticole ; limites des pays et provinces : Natural Earth (domaine public).
