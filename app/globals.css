@@ -390,3 +390,9 @@ details[open] > summary::before { content: '− '; }
 .carte-region:focus-visible .carte-point { stroke: var(--bordeaux); stroke-width: 2.5; }
 .carte-hors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.8rem; color: var(--taupe); }
 .carte-aide { font-size: 0.75rem; color: var(--taupe); margin-top: 6px; }
+
+/* Archives : effacement de soirées */
+.archive-pick { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.archive-pick input { width: 22px; height: 22px; margin-top: 4px; accent-color: var(--erreur); flex: none; }
+.archive-pick.on { border-color: var(--erreur); box-shadow: 0 0 0 1px var(--erreur) inset; }
+.archive-actions { position: sticky; bottom: 12px; box-shadow: 0 -6px 24px rgba(42, 26, 28, 0.12); z-index: 5; }

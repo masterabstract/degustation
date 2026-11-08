@@ -1,5 +1,6 @@
-import { db, unwrap } from '@/lib/db';
-import { route, json } from '@/lib/http';
+import { db, unwrap, HttpError } from '@/lib/db';
+import { route, json, body } from '@/lib/http';
+import { organizerPasswordOk } from '@/lib/auth';
 import { computeResults, norm } from '@/lib/scoring';
 
 export const dynamic = 'force-dynamic';
@@ -66,4 +67,23 @@ export const GET = route(async () => {
     .sort((a, b) => (b.moyenne ?? -1) - (a.moyenne ?? -1) || b.victoires - a.victoires || b.soirees - a.soirees);
 
   return json({ soirees, palmares });
+});
+
+// Suppression de soirées archivées, réservée à l'organisateur (mot de passe
+// organisateur). Seules les soirées révélées (celles des archives) peuvent être
+// effacées ici ; tout leur contenu part avec elles (participants, bouteilles,
+// fiches, pronostics). Le palmarès se recalcule tout seul.
+export const POST = route(async (req) => {
+  const b = await body(req);
+  if (b.action !== 'delete') throw new HttpError(400, 'Action inconnue.');
+  const ok = organizerPasswordOk(b.password);
+  if (ok === null) throw new HttpError(403, 'Aucun mot de passe organisateur n’est défini (variable ORGANIZER_PASSWORD dans Vercel) : la suppression est désactivée.');
+  if (!ok) {
+    await new Promise((r) => setTimeout(r, 800)); // freine les essais au hasard
+    throw new HttpError(403, 'Mot de passe organisateur incorrect.');
+  }
+  const codes = [...new Set((Array.isArray(b.codes) ? b.codes : []).map((c) => String(c).toUpperCase()).filter((c) => /^[A-Z0-9]{4,8}$/.test(c)))];
+  if (!codes.length) throw new HttpError(400, 'Choisissez au moins une soirée à effacer.');
+  const deleted = unwrap(await db().from('tastings').delete().in('code', codes).eq('phase', 'revelee').select('code'));
+  return json({ deleted: deleted.length });
 });

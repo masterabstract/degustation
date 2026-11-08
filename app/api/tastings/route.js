@@ -1,7 +1,6 @@
-import crypto from 'node:crypto';
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body, cleanText } from '@/lib/http';
-import { newToken, hashToken, randomCode, setAdminCookie } from '@/lib/auth';
+import { newToken, hashToken, randomCode, setAdminCookie, organizerPasswordOk } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,12 +8,7 @@ export const dynamic = 'force-dynamic';
 export const POST = route(async (req) => {
   const b = await body(req);
 
-  const expected = process.env.ORGANIZER_PASSWORD;
-  if (expected) {
-    const given = String(b.password || '');
-    const ok = given.length === expected.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));
-    if (!ok) throw new HttpError(403, 'Mot de passe organisateur incorrect.');
-  }
+  if (organizerPasswordOk(b.password) === false) throw new HttpError(403, 'Mot de passe organisateur incorrect.');
 
   const name = cleanText(b.name, 80);
   if (!name) throw new HttpError(400, 'Donnez un nom à la soirée.');
