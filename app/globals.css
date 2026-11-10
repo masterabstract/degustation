@@ -759,3 +759,4 @@ details[open] > summary::before { content: '− '; }
 .legal-bloc dd { margin: 0; line-height: 1.5; }
 @media (max-width: 420px) { .legal-bloc dl { grid-template-columns: 1fr; gap: 2px; } .legal-bloc dd { margin-bottom: 8px; } }
 @media (max-width: 480px) { .of-brand span { display: none; } }
+.of-nom-note { font-family: var(--serif); font-style: italic; font-size: 1.25rem; color: #fff; opacity: 0.9; margin: -10px 0 28px; max-width: 30em; }

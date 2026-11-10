@@ -150,6 +150,7 @@ export default function OffrePage({ places: initialPlaces, lang = 'fr' }) {
           <div className="of-hero-txt">
             <h1>{T.titre}</h1>
             <p className="of-lead">{T.lead}</p>
+            {T.nomNote && <p className="of-nom-note">{T.nomNote}</p>}
             <div className="of-ctas">
               <a href="#inscription" className="of-btn or">
                 {places === null || places > 0 ? T.testeurs.cta : T.ctaInscription}

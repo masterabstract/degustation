@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: { absolute: 'La Confrérie du Pif: blind wine tasting with friends' },
-  description: 'La Confrérie du Pif helps you host blind wine tastings: secret bottles, guesses on your phone, a wine-by-wine reveal, rankings and trophies. Guests play for free.',
+  description: 'La Confrérie du Pif (pif is French slang for nose) helps you host blind wine tastings: secret bottles, guesses on your phone, a wine-by-wine reveal, rankings and trophies. Guests play for free.',
   robots: { index: true, follow: true },
   alternates: { canonical: '/en/offer', languages: { fr: '/offre', en: '/en/offer' } },
   openGraph: {
