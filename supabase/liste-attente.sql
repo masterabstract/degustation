@@ -6,9 +6,11 @@ create table if not exists public.waitlist (
   email         text not null unique check (char_length(email) between 5 and 160),
   prenom        text check (char_length(prenom) <= 60),
   groupe        text check (char_length(groupe) <= 20),     -- taille du groupe indiquée
+  langue        text not null default 'fr' check (langue in ('fr', 'en')), -- langue de la page d'inscription
   consent_at    timestamptz not null default now(),         -- accord RGPD donné
   created_at    timestamptz not null default now()
 );
+alter table public.waitlist add column if not exists langue text not null default 'fr';
 create index if not exists waitlist_created_idx on public.waitlist (created_at);
 
 alter table public.waitlist enable row level security;
