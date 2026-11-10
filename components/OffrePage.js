@@ -8,7 +8,7 @@ import { TEXTES } from '@/lib/offre-textes';
 // Page de vente de La Confrérie du Pif (français ou anglais).
 // Élément signature : les 10 capsules numérotées, une par place d'essai gratuit.
 
-function Places({ places, large = false, T, variant = '' }) {
+export function Places({ places, large = false, T, variant = '' }) {
   const prises = places === null ? 0 : PLACES_ESSAI - places;
   return (
     <div className={`of-places${large ? ' large' : ''}${variant ? ` ${variant}` : ''}`}>
@@ -32,7 +32,7 @@ function Phone({ src, alt, priority }) {
   );
 }
 
-function Inscription({ places, setPlaces, T, lang }) {
+export function Inscription({ places, setPlaces, T, lang }) {
   const F = T.form;
   const opened = useRef(0);
   const [f, setF] = useState({ email: '', prenom: '', groupe: '', consent: false, site: '' });

@@ -1,3 +1,4 @@
+import { donnerAccesOffre } from '@/lib/acces-offre';
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body, cleanText } from '@/lib/http';
 import { newToken, hashToken, randomCode, setAdminCookie, organizerPasswordOk } from '@/lib/auth';
@@ -16,6 +17,7 @@ export const POST = route(async (req) => {
     await new Promise((r) => setTimeout(r, 700)); // freine les essais au hasard
     throw new HttpError(403, 'Mot de passe organisateur incorrect.');
   }
+  if (ok === true) await donnerAccesOffre(); // l'organisateur peut aussi voir la page de vente
   if (b.check === true) return json({ ok: true }); // simple vérification avant d'afficher le formulaire
 
   const name = cleanText(b.name, 80);

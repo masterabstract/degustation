@@ -6,7 +6,7 @@ import Retrait from '@/app/confidentialite/Retrait';
 const TX = {
   fr: {
     titre: 'Confidentialité',
-    retour: ['/offre', 'Retour à la présentation'],
+    retour: ['/degustation-vin-aveugle', 'Le guide de la dégustation à l’aveugle'],
     autre: ['/en/privacy', 'en', 'English version'],
     bref: 'Nous gardons le strict nécessaire, le temps nécessaire. Pas de publicité, pas de traceurs, rien n’est vendu ni partagé.',
     donnees: 'Ce que nous gardons',
@@ -42,7 +42,7 @@ const TX = {
   },
   en: {
     titre: 'Privacy',
-    retour: ['/en/offer', 'Back to the presentation'],
+    retour: ['/en/blind-wine-tasting', 'The blind tasting guide'],
     autre: ['/confidentialite', 'fr', 'Version française'],
     bref: 'We keep only what’s needed, for only as long as it’s needed. No advertising, no trackers, nothing sold or shared.',
     donnees: 'What we keep',

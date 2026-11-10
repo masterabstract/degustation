@@ -1,11 +1,15 @@
 import Confidentialite from '@/components/Confidentialite';
+import { offrePublique } from '@/lib/acces-offre';
 
-export const metadata = {
+const META = {
   title: { absolute: 'Privacy · La Confrérie du Pif' },
   description: 'What La Confrérie du Pif keeps, why, for how long, and how to have it deleted.',
-  robots: { index: true, follow: true },
   alternates: { languages: { fr: '/confidentialite', en: '/en/privacy' } },
 };
+
+export function generateMetadata() {
+  return { ...META, robots: offrePublique() ? { index: true, follow: true } : { index: false, follow: false } };
+}
 
 export default function Page() {
   return <Confidentialite lang="en" />;
