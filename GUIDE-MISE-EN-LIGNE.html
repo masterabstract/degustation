@@ -310,8 +310,22 @@ ANTHROPIC_API_KEY (facultatif) :</div>
     <li><strong>Une seule fois</strong> : dans Supabase, <strong>SQL Editor</strong> &gt; <strong>New query</strong>, collez tout le contenu du fichier <code>supabase/liste-attente.sql</code> et cliquez sur <span class="btn">Run</span> (si vous l’aviez déjà lancé avec la version 33, relancez-le : il ajoute la langue d’inscription). « Success. No rows returned » doit s’afficher. Sans cette étape, la page s’affiche mais l’inscription échoue.</li>
     <li><strong>Voir les inscrits</strong> : dans l’appli organisateur, lien « Liste d’attente » (ou <code>votre-adresse/orga/liste-attente</code>), puis le mot de passe organisateur. Les 10 premiers sont en doré. Le bouton <span class="btn">Copier toutes les adresses</span> permet de leur écrire depuis votre messagerie.</li>
     <li><strong>Facultatif</strong> : dans Vercel, ajoutez une variable <code>CONTACT_EMAIL</code> avec une adresse de contact ; elle s’affichera sur la page Confidentialité. Sinon, les visiteurs se désinscrivent avec le formulaire de cette page.</li>
-    <li>La page de vente est la seule que Google peut référencer ; les pages des soirées restent invisibles pour les moteurs de recherche.</li>
+    <li><strong>Pour l’instant, la page de vente est réservée aux organisateurs</strong> : un participant (ou n’importe quel visiteur) qui tape son adresse voit « Page réservée aux organisateurs » et un bouton pour rejoindre sa soirée ; aucun lien n’y mène depuis les pages des participants. Vous y accédez automatiquement depuis un téléphone où vous êtes connecté à une soirée en tant qu’organisateur, ou en tapant le mot de passe organisateur (valable 30 jours sur l’appareil). Google ne la référence pas tant qu’elle est réservée.</li>
+    <li><strong>Au lancement</strong>, pour l’ouvrir à tout le monde : dans Vercel, ajoutez la variable <code>OFFRE_PUBLIQUE</code> avec la valeur <code>oui</code>, puis faites un Redeploy. La page devient publique et référençable par Google.</li>
   </ol>
+
+  <h3>Être trouvé sur Google (le guide public)</h3>
+  <p>La page <code>votre-adresse/degustation-vin-aveugle</code> (et sa version anglaise <code>/en/blind-wine-tasting</code>) est un vrai guide pour organiser une dégustation à l’aveugle, sans tarifs. C’est la seule page faite pour Google, avec l’accueil. Les soirées, les espaces organisateur, les archives et la page de vente (tant qu’elle est réservée) restent invisibles des moteurs de recherche. Le plan du site est à <code>votre-adresse/sitemap.xml</code>.</p>
+  <ol>
+    <li>Allez sur <strong>search.google.com/search-console</strong> et connectez-vous avec votre compte Google.</li>
+    <li>Cliquez sur <span class="btn">Ajouter une propriété</span>, choisissez la case de droite <strong>Préfixe de l’URL</strong>, collez l’adresse complète de votre site (par exemple <code>https://votre-projet.vercel.app</code>) et cliquez sur <span class="btn">Continuer</span>.</li>
+    <li>Choisissez la méthode <strong>Balise HTML</strong>. Google affiche une ligne qui ressemble à <code>&lt;meta name="google-site-verification" content="abc123…" /&gt;</code>. Copiez <strong>uniquement</strong> le texte entre les guillemets après <code>content=</code>.</li>
+    <li>Dans Vercel : votre projet &gt; <span class="btn">Settings</span> &gt; <span class="btn">Environment Variables</span>. Nom : <code>GOOGLE_SITE_VERIFICATION</code>, valeur : le texte copié. <span class="btn">Save</span>, puis <span class="btn">Deployments</span> &gt; les trois points du premier déploiement &gt; <span class="btn">Redeploy</span>.</li>
+    <li>Une fois le déploiement terminé (statut « Ready »), revenez dans Search Console et cliquez sur <span class="btn">Valider</span>.</li>
+    <li>Dans le menu de gauche, <strong>Sitemaps</strong> : tapez <code>sitemap.xml</code> et cliquez sur <span class="btn">Envoyer</span>.</li>
+    <li>En haut, dans la barre de recherche de Search Console, collez l’adresse du guide, puis cliquez sur <span class="btn">Demander une indexation</span>.</li>
+  </ol>
+  <div class="box tip">Si vous prenez un nom de domaine (par exemple confreriedupif.fr), branchez-le dans Vercel (Settings &gt; Domains), ajoutez la variable <code>SITE_URL</code> avec l’adresse complète (<code>https://confreriedupif.fr</code>), faites un Redeploy, puis refaites l’étape Search Console avec cette nouvelle adresse.</div>
 
   <h2><span class="n">7</span>Sauvegardes</h2>
   <p>Le plan gratuit de Supabase ne fait pas de sauvegarde automatique de la base. Le site vous permet d’en faire vous-même, en un clic :</p>
