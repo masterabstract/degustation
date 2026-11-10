@@ -200,6 +200,12 @@ export default function OrgaApp() {
           <Link href="/archives" className="small">
             Archives et palmarès
           </Link>
+          <Link href="/orga/liste-attente" className="small">
+            Liste d’attente
+          </Link>
+          <Link href="/offre" className="small">
+            Page de vente
+          </Link>
           <Link href="/" className="small muted">
             Site des participants
           </Link>

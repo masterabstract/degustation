@@ -107,6 +107,9 @@ export default function Home() {
             Les soirées passées, leurs résultats, et le classement général des dégustateurs.
           </p>
         </Link>
+        <p className="center small" style={{ marginTop: 8 }}>
+          Vous aussi, organisez vos dégustations à l’aveugle : <Link href="/offre">découvrir La Confrérie du Pif</Link>
+        </p>
         {!showOrganiser && (
           <p className="center tiny">
             <Link href="/orga" className="muted">
