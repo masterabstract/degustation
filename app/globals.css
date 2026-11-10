@@ -501,3 +501,44 @@ details[open] > summary::before { content: '− '; }
 .trophy-title { font-family: var(--serif); font-weight: 600; font-size: 1.15rem; color: var(--lie); line-height: 1.15; }
 .trophy-who { font-weight: 700; overflow-wrap: anywhere; }
 .trophy-why { font-size: 0.82rem; color: var(--taupe); }
+
+/* ---------- Appli organisateur ---------- */
+.pill.gold { background: var(--or); color: var(--lie); }
+.tab-icon, .tab-short { display: none; }
+.orga-hero {
+  background: radial-gradient(ellipse at 50% 30%, var(--bordeaux) 0%, var(--lie) 70%);
+  color: var(--creme); text-align: center; padding: 22px 20px 24px; border-bottom: 3px solid var(--or);
+  display: flex; flex-direction: column; align-items: center;
+}
+.orga-logo { width: min(170px, 46vw); height: auto; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.4)); }
+.orga-eyebrow { font-family: var(--serif); font-style: italic; color: var(--or-clair); margin: 8px 0 0; font-size: 1.05rem; }
+.orga-hero h1 { font-family: var(--serif); font-weight: 600; font-size: 2rem; margin: 0; }
+.install-card { border: 2px solid var(--or); background: #fffaf0; }
+.install-steps { margin: 0; padding-left: 22px; display: grid; gap: 6px; font-size: 0.93rem; }
+.orga-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.orga-soiree {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px;
+  background: var(--papier); border: 1px solid var(--trait); color: inherit; text-decoration: none;
+}
+.orga-soiree-main { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.orga-soiree-main strong { overflow-wrap: anywhere; }
+
+/* Appli installée (plein écran) : onglets de l'espace organisateur en bas, comme une appli. */
+@media (display-mode: standalone) {
+  .admin-tabs {
+    position: fixed; top: auto; bottom: 0; left: 0; right: 0; z-index: 40;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    background: var(--lie); border-top: 2px solid var(--or);
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.18);
+  }
+  .admin-tabs .tabs { flex-wrap: nowrap; background: transparent; border: 0; padding: 0; gap: 2px; max-width: 640px; margin: 0 auto; box-shadow: none; }
+  .admin-tabs .tabs button {
+    flex: 1 1 0; min-width: 0; min-height: 52px; padding: 4px 2px; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    color: var(--or-clair); background: transparent; font-size: 0.72rem;
+  }
+  .admin-tabs .tabs button[aria-selected='true'] { background: rgba(201, 162, 77, 0.22); color: #fff; }
+  .admin-tabs .tab-icon, .admin-tabs .tab-short { display: block; }
+  .admin-tabs .tab-long { display: none; }
+  .page.wide { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+}

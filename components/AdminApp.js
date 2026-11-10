@@ -15,12 +15,26 @@ const PHASE_LABEL = {
 };
 
 const TABS = [
-  ['accueil', 'Soirée'],
-  ['participants', 'Participants'],
-  ['bouteilles', 'Bouteilles'],
-  ['suivi', 'Suivi'],
-  ['revelation', 'Révélation'],
+  ['accueil', 'Soirée', 'Soirée'],
+  ['participants', 'Participants', 'Invités'],
+  ['bouteilles', 'Bouteilles', 'Bouteilles'],
+  ['suivi', 'Suivi', 'Suivi'],
+  ['revelation', 'Révélation', 'Révéler'],
 ];
+
+// Icônes de la barre d'onglets en bas de l'écran (appli organisateur installée).
+function TabIcon({ id }) {
+  const c = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  return (
+    <svg className="tab-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      {id === 'accueil' && <path {...c} d="M8 3h8l-1 6a3 3 0 0 1-6 0L8 3zM12 12v7M8 21h8" />}
+      {id === 'participants' && <path {...c} d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5M16 4.5a3.3 3.3 0 0 1 0 6.3M18 14.8c1.9.7 3.1 2.6 3.5 5.2" />}
+      {id === 'bouteilles' && <path {...c} d="M10 2h4v4l1.5 2.5c.6 1 1 2.2 1 3.4V21a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-9.1c0-1.2.4-2.4 1-3.4L10 6V2zM7.5 13h9" />}
+      {id === 'suivi' && <path {...c} d="M4 20V10M10 20V4M16 20v-7M22 20H2" />}
+      {id === 'revelation' && <path {...c} d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />}
+    </svg>
+  );
+}
 
 export default function AdminApp({ code }) {
   const [authed, setAuthed] = useState(null); // null = vérification en cours
@@ -91,15 +105,29 @@ export default function AdminApp({ code }) {
     <main>
       <Band
         wide
+        back="/orga"
         title={tasting.name}
         sub={`Organisateur · ${PHASE_LABEL[tasting.phase]}${tasting.event_date ? ` · ${fmtDate(tasting.event_date)}` : ''}`}
       />
       <div className="page wide">
-        <div className="sticky-tabs">
+        <div className="sticky-tabs admin-tabs">
           <nav className="tabs" role="tablist">
-            {TABS.map(([id, label]) => (
-              <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
-                {label}
+            {TABS.map(([id, label, short]) => (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={tab === id}
+                aria-label={label}
+                onClick={() => {
+                  setTab(id);
+                  window.scrollTo(0, 0);
+                }}
+              >
+                <TabIcon id={id} />
+                <span className="tab-long">{label}</span>
+                <span className="tab-short" aria-hidden="true">
+                  {short}
+                </span>
               </button>
             ))}
           </nav>
@@ -155,7 +183,7 @@ function AdminLogin({ code, error: initialError, onDone }) {
 
   return (
     <main>
-      <Band title="Espace organisateur" sub={`Soirée ${code}`} back={me ? `/t/${code}` : '/'} />
+      <Band title="Espace organisateur" sub={`Soirée ${code}`} back={me ? `/t/${code}` : '/orga'} />
       <form
         className="page stack"
         onSubmit={async (e) => {
@@ -302,6 +330,8 @@ function TabHome({ data, act, busy, code, setTab }) {
 
       <DeleteTasting code={code} name={tasting.name} />
 
+      <AppLink code={code} />
+
       <div className="panel stack">
         <h2>Sauvegarde</h2>
         <p className="small muted">Téléchargez à tout moment une copie complète de la soirée (participants, bouteilles, fiches, pronostics).</p>
@@ -310,6 +340,49 @@ function TabHome({ data, act, busy, code, setTab }) {
         </a>
       </div>
     </>
+  );
+}
+
+// Appli organisateur : installer l'appli, et récupérer le lien organisateur pour s'y connecter.
+function AppLink({ code }) {
+  const [state, setState] = useState(null); // null | 'copie' | 'affiche' | message d'erreur
+  const [url, setUrl] = useState('');
+  async function get() {
+    const r = await api(`/api/admin/${code}/lien`);
+    setUrl(r.url);
+    return r.url;
+  }
+  return (
+    <div className="panel stack">
+      <h2>Appli organisateur</h2>
+      <p className="small muted">Installez l’appli « Confrérie Orga » sur votre téléphone pour piloter la soirée en plein écran. Sur iPhone, l’appli est séparée de Safari : collez-y une fois votre lien organisateur.</p>
+      <Link href="/orga" className="btn ghost block">
+        Ouvrir l’appli organisateur
+      </Link>
+      <button
+        type="button"
+        className="btn ghost block"
+        onClick={async () => {
+          try {
+            const u = url || (await get());
+            await navigator.clipboard.writeText(u);
+            setState('copie');
+          } catch {
+            try {
+              await get();
+              setState('affiche');
+            } catch (e) {
+              setState(e.message);
+            }
+          }
+        }}
+      >
+        {state === 'copie' ? 'Lien organisateur copié' : 'Copier mon lien organisateur'}
+      </button>
+      {state === 'affiche' && url && <input className="input small" readOnly value={url} onFocus={(e) => e.target.select()} aria-label="Lien organisateur" />}
+      {state && state !== 'copie' && state !== 'affiche' && <Notice kind="error">{state}</Notice>}
+      <p className="tiny muted">Gardez ce lien pour vous : il donne accès au pilotage de la soirée (pas au contenu des bouteilles).</p>
+    </div>
   );
 }
 

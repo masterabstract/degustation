@@ -1,0 +1,18 @@
+{
+  "id": "/orga",
+  "name": "La Confrérie du Pif · Organisateur",
+  "short_name": "Confrérie Orga",
+  "description": "L'appli de l'organisateur : créer et piloter les dégustations à l'aveugle de la Confrérie du Pif.",
+  "lang": "fr",
+  "start_url": "/orga",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#4a0e1e",
+  "theme_color": "#4a0e1e",
+  "icons": [
+    { "src": "/orga-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/orga-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/orga-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

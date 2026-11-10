@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { pendingDrafts, sendPendingDrafts } from '@/lib/brouillons';
+import { pendingDrafts, sendPendingDrafts, takeRefused } from '@/lib/brouillons';
 
 // Sur la liste des vins : envoie les fiches restées sur le téléphone (coupure réseau)
 // et prévient le participant tant qu'il en reste.
@@ -12,11 +12,11 @@ export default function DraftSync({ code }) {
   useEffect(() => {
     let alive = true;
     const run = async () => {
-      if (!pendingDrafts(code).length) return alive && setLeft(0);
-      const r = await sendPendingDrafts(code);
+      const r = pendingDrafts(code).length ? await sendPendingDrafts(code) : { left: 0 };
       if (!alive) return;
       setLeft(r.left);
-      if (r.refused) setRefused((n) => n + r.refused);
+      const n = takeRefused(code); // y compris celles refusées depuis la page d'un vin
+      if (n) setRefused((x) => x + n);
     };
     run();
     const id = setInterval(run, 5000);

@@ -90,6 +90,9 @@ export default function Home() {
             <Link href="/organiser" className="btn ghost block">
               Créer une dégustation
             </Link>
+            <Link href="/orga" className="small" style={{ display: 'block', textAlign: 'center', marginTop: 10 }}>
+              Installer l’appli organisateur
+            </Link>
           </div>
         )}
 
@@ -106,7 +109,7 @@ export default function Home() {
         </Link>
         {!showOrganiser && (
           <p className="center tiny">
-            <Link href="/organiser" className="muted">
+            <Link href="/orga" className="muted">
               Espace organisateur
             </Link>
           </p>

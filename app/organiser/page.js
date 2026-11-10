@@ -71,7 +71,7 @@ export default function Organiser() {
   if (!unlocked) {
     return (
       <main>
-        <Band title="Espace organisateur" back="/" />
+        <Band title="Espace organisateur" back="/orga" />
         <form
           className="page stack"
           onSubmit={async (e) => {
@@ -111,7 +111,7 @@ export default function Organiser() {
 
   return (
     <main>
-      <Band title="Nouvelle dégustation" back="/" />
+      <Band title="Nouvelle dégustation" back="/orga" />
       <form className="page stack" onSubmit={submit}>
         <div className="panel stack">
           <label className="field">

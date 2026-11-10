@@ -11,7 +11,7 @@ import ServeAlert from './ServeAlert';
 import { optionsFor, fillFromAppellation, fillFromRegion, describePatch, regionOptions, appellationOptions, grapeOptions, appellationGrapes } from '@/lib/autofill';
 import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
 import { BAREME, VINTAGE_DECADES } from '@/lib/bareme';
-import { readDraft, writeDraft, deleteDraft, sendPendingDrafts, isNetworkError } from '@/lib/brouillons';
+import { readDraft, writeDraft, deleteDraft, sendPendingDrafts, isNetworkError, markRefused } from '@/lib/brouillons';
 
 const EMPTY_RATING = {
   robe: null, intensite_visuelle: null, intensite_nez: null, aromes: [], acidite: null,
@@ -173,6 +173,7 @@ export default function SheetPage({ code, number: routeNumber }) {
     } catch (e) {
       if (e.status === 403) {
         deleteDraft(code, bid); // vin révélé ou soirée verrouillée : la fiche ne partira plus
+        if (!current()) markRefused(code); // le participant a quitté ce vin : il sera prévenu sur la liste
         if (current()) {
           dirty.current = { rating: false, prediction: false };
           setSave({ status: 'error', msg: e.message });
