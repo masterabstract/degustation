@@ -45,7 +45,7 @@ export const GET = route(async (_req, { code }) => {
       partial
         .map((t) => {
           const d = t.details.find((x) => x.bottleId === bottleId);
-          return d ? { name: t.name, total: d.total, max: d.max, why: d.why, guess: d.guess, geoLabel: d.geo.label } : null;
+          return d ? { name: t.name, total: d.total, max: d.max, why: d.why, guess: d.guess, geoLabel: d.geo.label, detail: { french: d.french, why: d.why, grapes: { pts: d.grapes.pts, max: d.grapes.max }, geo: { pts: d.geo.pts, max: d.geo.max }, country: { pts: d.country.pts, max: d.country.max }, vintage: { pts: d.vintage.pts, max: d.vintage.max } } } : null;
         })
         .filter(Boolean)
         .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'fr'));

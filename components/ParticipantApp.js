@@ -7,6 +7,7 @@ import { BAREME } from '@/lib/bareme';
 import BottleForm from './BottleForm';
 import { VintageTable } from './SheetPage';
 import { rememberSoiree, forgetSoiree } from '@/lib/memo';
+import { predictionStatus, missingFields } from '@/lib/pronostic';
 import ServeAlert from './ServeAlert';
 import DraftSync from './DraftSync';
 
@@ -106,6 +107,15 @@ function Waiting({ name }) {
   );
 }
 
+// Pronostic : complet (les 5 réponses à points), incomplet (il en manque) ou à faire.
+function PronoTick({ p }) {
+  const st = predictionStatus(p);
+  const n = missingFields(p).length;
+  if (st === 'complet') return <span className="tick done">Pronostic complet</span>;
+  if (st === 'incomplet') return <span className="tick partial">Pronostic incomplet ({n} à compléter)</span>;
+  return <span className="tick">Pronostic à faire</span>;
+}
+
 function WineRow({ b, code, sheets, mine, now, later, revealed }) {
   const s = sheets[b.id] || {};
   return (
@@ -118,10 +128,12 @@ function WineRow({ b, code, sheets, mine, now, later, revealed }) {
           {mine && <div className="tiny muted">Votre bouteille</div>}
           {revealed && <div className="tiny" style={{ color: 'var(--bordeaux)', fontWeight: 700 }}>Révélé · fiche verrouillée</div>}
           <div className="ticks">
-            <span className={`tick ${ratingDone(s.rating) ? 'done' : ''}`}>
-              {ratingDone(s.rating) ? `Fiche · ${String(s.rating.note).replace('.', ',')}/20` : 'Fiche à remplir'}
-            </span>
-            <span className={`tick ${predictionDone(s.prediction) ? 'done' : ''}`}>{predictionDone(s.prediction) ? 'Pronostic fait' : 'Pronostic à faire'}</span>
+            {mine ? <span className="tick">Pronostic : ne compte pas</span> : <PronoTick p={s.prediction} />}
+            {ratingDone(s.rating) ? (
+              <span className="tick done">Note · {String(s.rating.note).replace('.', ',')}/20</span>
+            ) : (
+              <span className="tick optional">Fiche facultative</span>
+            )}
           </div>
         </div>
         <span className="chev" aria-hidden="true">
@@ -135,7 +147,9 @@ function WineRow({ b, code, sheets, mine, now, later, revealed }) {
 function WineList({ data, code }) {
   const { bottles, sheets, tasting } = data;
   const mineIds = new Set((data.myBottles || []).map((b) => b.id));
-  const done = bottles.filter((b) => ratingDone(sheets[b.id]?.rating)).length;
+  // Ce qui compte pour les points : les pronostics sur les vins des autres (la fiche est facultative).
+  const toGuess = bottles.filter((b) => !mineIds.has(b.id));
+  const done = toGuess.filter((b) => predictionStatus(sheets[b.id]?.prediction) === 'complet').length;
   const served = new Set(tasting.served_numbers || []);
   const shown = new Set(tasting.revealed_numbers || []);
   const live = tasting.phase === 'degustation' && served.size > 0;
@@ -152,9 +166,11 @@ function WineList({ data, code }) {
         <h2 className="h2" style={{ margin: 0 }}>
           Les vins
         </h2>
-        <span className="small muted">
-          {done} / {bottles.length} notés
-        </span>
+        {toGuess.length > 0 && (
+          <span className="small muted">
+            {done} / {toGuess.length} pronostic{toGuess.length > 1 ? 's' : ''} complet{toGuess.length > 1 ? 's' : ''}
+          </span>
+        )}
       </div>
       {live ? (
         <>
@@ -209,6 +225,9 @@ function Rules() {
             <tr><td><strong>Total</strong></td><td><strong>{F.total}</strong></td><td><strong>{E.total}</strong></td></tr>
           </tbody>
         </table>
+        <p>
+          <strong>Seuls les pronostics rapportent des points.</strong> La fiche de dégustation (robe, arômes, note sur 20, commentaire) est facultative : elle ne compte pas dans le classement des dégustateurs. Les notes sur 20 servent seulement à élire le meilleur vin de la soirée.
+        </p>
         <p>
           <strong>Cépages</strong> : un monocépage exact rapporte 10 points. Pour un assemblage, chaque cépage trouvé rapporte sa part (70 % de Merlot = 7 points), et chaque cépage cité à tort retire {BAREME.grapeWrongPenalty} point.
         </p>
@@ -359,7 +378,7 @@ function Welcome({ tasting, count, onEnter }) {
           </li>
           <li>
             <strong>À l’aveugle, le nez dans le verre</strong>
-            <span>Pour chaque vin : votre note, vos arômes, puis vos pronostics (pays, région, appellation, cépages, millésime).</span>
+            <span>Pour chaque vin, vos pronostics (pays, région, appellation, cépages, millésime) : ce sont eux qui rapportent les points. La fiche de dégustation (note, arômes, commentaire) est facultative.</span>
           </li>
           <li>
             <strong>La révélation</strong>

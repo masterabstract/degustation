@@ -19,10 +19,11 @@ const noteTxt = (pct) => `${String(sur20(pct)).replace('.', ',')}/20`;
 
 // Détail transparent d'un score sur un vin : critère par critère, avec l'explication.
 export function ScoreDetail({ d }) {
+  // Dans l'ordre du pronostic : pays, région et appellation, cépages, millésime.
   const rows = [
-    ['Cépages', d.grapes, d.why.grapes],
-    [d.french ? 'Appellation' : 'Géographie', d.geo, d.why.geo],
     ['Pays', d.country, d.why.country],
+    ['Région et appellation', d.geo, d.why.geo],
+    ['Cépages', d.grapes, d.why.grapes],
     ['Millésime', d.vintage, d.why.vintage],
   ];
   return (
@@ -364,6 +365,7 @@ function LiveReveal({ data, code }) {
                 <div className="section-label" style={{ marginTop: 0 }}>
                   Les pronostics sur ce vin (sur {w.scores[0].max} points)
                 </div>
+                <div className="tiny muted">Touchez un nom pour voir le détail des points, critère par critère.</div>
                 {w.scores.map((sc) => (
                   <details key={sc.name} className="small" style={{ padding: '4px 0', borderTop: '1px solid var(--trait)' }}>
                     <summary style={{ listStyle: 'none', display: 'flex', justifyContent: 'space-between', gap: 10, color: 'var(--encre)' }}>
@@ -374,9 +376,13 @@ function LiveReveal({ data, code }) {
                         {num(sc.total)} pts
                       </strong>
                     </summary>
-                    <div className="tiny muted">
-                      Cépages : {sc.why.grapes} · Géographie : {sc.why.geo} · Pays : {sc.why.country} · Millésime : {sc.why.vintage}
-                    </div>
+                    {sc.detail ? (
+                      <ScoreDetail d={sc.detail} />
+                    ) : (
+                      <div className="tiny muted">
+                        Cépages : {sc.why.grapes} · Géographie : {sc.why.geo} · Pays : {sc.why.country} · Millésime : {sc.why.vintage}
+                      </div>
+                    )}
                   </details>
                 ))}
               </div>

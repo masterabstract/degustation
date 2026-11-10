@@ -1,3 +1,4 @@
+import { missingFields, PRONO_CHAMPS } from '@/lib/pronostic';
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body, cleanText } from '@/lib/http';
 import { requireAdmin } from '@/lib/auth';
@@ -17,7 +18,7 @@ async function loadState(tasting) {
     db().from('participants').select('id, name, hors_concours, token_hash, joined_at').eq('tasting_id', tasting.id).order('created_at'),
     db().from('bottles').select(`${PUBLIC_COLS}, owner_id, ${SECRET_COLS}`).eq('tasting_id', tasting.id),
     db().from('ratings').select('participant_id, bottle_id, note').eq('tasting_id', tasting.id),
-    db().from('predictions').select('participant_id, bottle_id').eq('tasting_id', tasting.id),
+    db().from('predictions').select('participant_id, bottle_id, country, region, appellation, grapes, vintage').eq('tasting_id', tasting.id),
   ]).then((rs) => rs.map((r) => unwrap(r)));
 
   const count = (pid) => bottles.filter((b) => b.owner_id === pid).length;
@@ -49,7 +50,8 @@ async function loadState(tasting) {
     bottles: visibleBottles,
     progress: {
       ratings: ratings.filter((r) => r.note !== null).map((r) => [r.participant_id, r.bottle_id]),
-      predictions: predictions.map((r) => [r.participant_id, r.bottle_id]),
+      // [participant, vin, nombre de réponses à points remplies sur 5] : jamais le contenu des pronostics
+      predictions: predictions.map((r) => [r.participant_id, r.bottle_id, PRONO_CHAMPS.length - missingFields(r).length]),
     },
   };
 }

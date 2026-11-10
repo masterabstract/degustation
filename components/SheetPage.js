@@ -11,6 +11,7 @@ import ServeAlert from './ServeAlert';
 import { optionsFor, fillFromAppellation, fillFromRegion, describePatch, regionOptions, appellationOptions, grapeOptions, appellationGrapes } from '@/lib/autofill';
 import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
 import { BAREME, VINTAGE_DECADES } from '@/lib/bareme';
+import { missingFields, listeChamps, PRONO_CHAMPS } from '@/lib/pronostic';
 import { readDraft, writeDraft, deleteDraft, sendPendingDrafts, isNetworkError, markRefused } from '@/lib/brouillons';
 
 const EMPTY_RATING = {
@@ -28,6 +29,7 @@ export default function SheetPage({ code, number: routeNumber }) {
   const [number, setNumber] = useState(routeNumber);
   useEffect(() => setNumber(routeNumber), [routeNumber]);
   const [listBlocked, setListBlocked] = useState(false);
+  const [warnLeave, setWarnLeave] = useState(null); // destination après un 1er toucher avec pronostic incomplet
   const [state, setState] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [tab, setTab] = useState('prono'); // onglet 1 : pronostics, onglet 2 : fiche de dégustation
@@ -58,6 +60,7 @@ export default function SheetPage({ code, number: routeNumber }) {
   function initSheet(d, b) {
     clearTimeout(timer.current);
     setLostDraft(false);
+    setWarnLeave(null);
     dirty.current = { rating: false, prediction: false };
     dataFor.current = null;
     const s = d.sheets?.[b.id] || {};
@@ -228,6 +231,14 @@ export default function SheetPage({ code, number: routeNumber }) {
   }, [bottle?.id]);
 
   async function go(target, n = null) {
+    // Pronostic incomplet : on le signale une fois ; un second toucher passe quand même.
+    const mineNow = (stateRef.current?.myBottles || []).some((m) => m.id === dataFor.current);
+    const manque = !locked && !mineNow ? missingFields(latest.current.pred) : [];
+    if (manque.length && warnLeave !== target) {
+      setWarnLeave(target);
+      return;
+    }
+    setWarnLeave(null);
     clearTimeout(timer.current);
     await flush();
     const offline = (typeof navigator !== 'undefined' && navigator.onLine === false) || noNetwork || save.status === 'offline';
@@ -287,6 +298,10 @@ export default function SheetPage({ code, number: routeNumber }) {
   const grapeOpts = grapeOptions(predOpts.grapes, pred.appellation);
   const appGrapes = appellationGrapes(pred.appellation);
   const grapeList = String(pred.grapes || '').split(',').map((x) => x.trim()).filter(Boolean);
+  // Champs du pronostic qui rapportent des points et qui sont encore vides
+  const isMine = !!state && (state.myBottles || []).some((m) => m.id === bottle?.id);
+  const manque = locked || isMine ? [] : missingFields(pred); // sa propre bouteille ne compte pas
+  const isMissing = (key) => manque.some((c) => c.key === key);
   const foldG = (x) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const hasGrape = (g) => grapeList.some((x) => foldG(x) === foldG(g));
   const toggleGrape = (g) => change('pred', { grapes: (hasGrape(g) ? grapeList.filter((x) => foldG(x) !== foldG(g)) : [...grapeList, g]).join(', ') });
@@ -308,9 +323,15 @@ export default function SheetPage({ code, number: routeNumber }) {
           <nav className="tabs" role="tablist">
             <button role="tab" aria-selected={tab === 'prono'} onClick={() => setTab('prono')}>
               Pronostics
+              {manque.length > 0 && (
+                <span className="tab-badge" aria-label={`${manque.length} à compléter`}>
+                  {manque.length}
+                </span>
+              )}
             </button>
             <button role="tab" aria-selected={tab === 'fiche'} onClick={() => setTab('fiche')}>
               Fiche de dégustation
+              <span className="tab-sub">facultative</span>
             </button>
           </nav>
         </div>
@@ -360,12 +381,15 @@ export default function SheetPage({ code, number: routeNumber }) {
           );
         })()}
         {(state.myBottles || []).some((m) => m.id === bottle.id) && (
-          <Notice kind="info">C’est votre bouteille : vous pouvez la noter pour le plaisir, mais votre note et vos pronostics ne comptent pas.</Notice>
+          <Notice kind="info">C’est votre bouteille : vous pouvez la noter et pronostiquer pour le plaisir, mais votre note et vos pronostics ne comptent pas.</Notice>
         )}
         {locked && state.tasting.phase === 'preparation' && <Notice kind="info">La dégustation est en pause : vos saisies reprendront dès sa relance.</Notice>}
 
         {tab === 'fiche' && (
           <div className="panel" style={{ marginTop: 12 }}>
+            <p className="small muted" style={{ marginTop: 0 }}>
+              <strong>Fiche facultative</strong> : remplissez ce que vous voulez, ou rien du tout. Elle ne rapporte aucun point ; votre note sur 20 sert seulement à élire le meilleur vin de la soirée.
+            </p>
             <Crit n={1} title="Couleur et robe">
               {ROBES.map((g) => (
                 <div key={g.group}>
@@ -408,7 +432,27 @@ export default function SheetPage({ code, number: routeNumber }) {
             <p className="small muted">
               D’après vous, quel est ce vin ? Un vin français vaut {BAREME.france.total} points, un vin étranger {BAREME.foreign.total} points. Vos pronostics restent secrets jusqu’à la révélation.
             </p>
-            <Crit title="Pays" n={1} pts={`${BAREME.france.country} ou ${BAREME.foreign.country} pts`} hint={`${BAREME.france.country} points si le vin est français, ${BAREME.foreign.country} points s’il est étranger.`}>
+            {!locked && !isMine && (
+              <div className={`prono-check ${manque.length ? 'todo' : 'done'}`} role="status">
+                {manque.length === 0 ? (
+                  <>
+                    <strong>Pronostic complet.</strong> Les cinq réponses qui rapportent des points sont remplies.
+                  </>
+                ) : manque.length === PRONO_CHAMPS.length ? (
+                  <>
+                    <strong>Pronostic à faire.</strong> Cinq réponses rapportent des points : pays, région, appellation, cépages et millésime. Une réponse vide rapporte 0 point : en cas de doute, tentez votre chance.
+                  </>
+                ) : (
+                  <>
+                    <strong>
+                      Il manque {manque.length > 1 ? `${manque.length} réponses` : 'une réponse'} : {listeChamps(manque)}.
+                    </strong>{' '}
+                    {manque.length > 1 ? 'Elles rapportent' : 'Elle rapporte'} des points ({manque.map((c) => `${c.label} ${c.pts}`).join(', ')}) ; vide, {manque.length > 1 ? 'elles ne rapportent' : 'elle ne rapporte'} rien. En cas de doute, tentez votre chance.
+                  </>
+                )}
+              </div>
+            )}
+            <Crit missing={isMissing('country')} title="Pays" n={1} pts={`${BAREME.france.country} ou ${BAREME.foreign.country} pts`} hint={`${BAREME.france.country} points si le vin est français, ${BAREME.foreign.country} points s’il est étranger.`}>
               <select className="input" aria-label="Pays" value={pred.country} onChange={(e) => change('pred', { country: e.target.value })} disabled={locked}>
                 <option value="">Choisir un pays</option>
                 {COUNTRIES.map((x) => (
@@ -417,6 +461,7 @@ export default function SheetPage({ code, number: routeNumber }) {
               </select>
             </Crit>
             <Crit
+              missing={isMissing('region')}
               title="Région"
               n={2}
               pts="3 pts"
@@ -453,6 +498,7 @@ export default function SheetPage({ code, number: routeNumber }) {
               )}
             </Crit>
             <Crit
+              missing={isMissing('appellation')}
               title="Appellation"
               n={3}
               pts="+2 pts"
@@ -487,6 +533,7 @@ export default function SheetPage({ code, number: routeNumber }) {
               {autoNote && <div className="autofill-note">{autoNote}</div>}
             </Crit>
             <Crit
+              missing={isMissing('grapes')}
               title="Cépage(s)"
               n={4}
               pts={`${BAREME.france.grapes} pts`}
@@ -522,7 +569,7 @@ export default function SheetPage({ code, number: routeNumber }) {
                 </div>
               )}
             </Crit>
-            <Crit title="Millésime" n={5} pts={`${BAREME.france.vintage} pts`} hint="Année exacte : 3 points. Ensuite on perd des points à chaque année d’écart, moins vite pour les vins anciens (tableau ci-dessous).">
+            <Crit missing={isMissing('vintage')} title="Millésime" n={5} pts={`${BAREME.france.vintage} pts`} hint="Année exacte : 3 points. Ensuite on perd des points à chaque année d’écart, moins vite pour les vins anciens (tableau ci-dessous).">
               <div className="row">
                 <input
                   className="input grow"
@@ -551,7 +598,7 @@ export default function SheetPage({ code, number: routeNumber }) {
             </Crit>
             {!locked && (
               <button className="btn gold block" style={{ marginTop: 8 }} onClick={() => { setTab('fiche'); window.scrollTo({ top: 0 }); }}>
-                Passer à la fiche de dégustation
+                Passer à la fiche de dégustation (facultative)
               </button>
             )}
           </div>
@@ -559,6 +606,18 @@ export default function SheetPage({ code, number: routeNumber }) {
       </div>
 
       <div className="bottom-bar">
+        {warnLeave && (
+          <div className="leave-warn" role="alert">
+            {(() => {
+              const m = missingFields(pred);
+              return m.length === PRONO_CHAMPS.length ? 'Pronostic pas encore fait sur ce vin (0 point).' : `Pronostic incomplet : il manque ${listeChamps(m)}.`;
+            })()}{' '}
+            <button type="button" className="linklike" onClick={() => { setWarnLeave(null); setTab('prono'); window.scrollTo({ top: 0 }); }}>
+              Compléter
+            </button>{' '}
+            ou touchez à nouveau pour passer.
+          </div>
+        )}
         <div className="inner">
           <button className="btn ghost sm" disabled={!prev} onClick={() => prev && go(`/t/${code}/vin/${prev.number}`, prev.number)} aria-label="Vin précédent">
             ‹ {prev ? `n°${prev.number}` : ''}
@@ -581,13 +640,14 @@ export default function SheetPage({ code, number: routeNumber }) {
   );
 }
 
-function Crit({ n, title, hint, pts, children }) {
+function Crit({ n, title, hint, pts, missing, children }) {
   return (
-    <section className="crit">
+    <section className={`crit${missing ? ' missing' : ''}`}>
       <div className="crit-head">
         {n && <span className="crit-num">{n}</span>}
         <span className="crit-title">{title}</span>
-        {pts && <span className="pill" style={{ marginLeft: 'auto' }}>{pts}</span>}
+        {missing && <span className="pill red">À compléter</span>}
+        {pts && <span className="pill" style={{ marginLeft: missing ? 0 : 'auto' }}>{pts}</span>}
       </div>
       {hint && <div className="crit-hint">{hint}</div>}
       {children}

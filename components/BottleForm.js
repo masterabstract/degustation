@@ -107,7 +107,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
         <input className="input" value={b.producer} onChange={set('producer')} required maxLength={120} placeholder="Ex : Domaine Ogier" />
       </label>
       <div className="field">
-        <span>Appellation</span>
+        <span>Appellation *</span>
         <Autocomplete
           value={b.appellation}
           onChange={set('appellation')}
@@ -126,6 +126,9 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
           aria-label="Appellation"
         />
         {autoNote && <div className="autofill-note">{autoNote}</div>}
+        <span className="tiny muted" style={{ fontWeight: 400 }}>
+          Vin sans appellation (vin nature, vin de table) : choisissez {opts.generic ? `« ${opts.generic} »` : '« Vin de France » ou son équivalent'}, ou son IGP.
+        </span>
       </div>
       <GrapeRows rows={b.grape_mix} options={opts.grapes} onChange={(grape_mix) => setB((x) => ({ ...x, grape_mix }))} />
       <div className="field">
@@ -180,8 +183,19 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
         <input className="input" value={b.notes} onChange={set('notes')} placeholder="Ex : rapporté de mes vacances en Bourgogne" maxLength={400} aria-label="Petit mot pour la révélation" />
       </label>
       <p className="tiny muted" style={{ margin: 0 }}>* champ obligatoire</p>
+      {(() => {
+        const manque = [
+          !b.country && 'pays',
+          !b.producer.trim() && 'domaine',
+          !b.appellation.trim() && 'appellation',
+          !rowsText(b.grape_mix) && 'cépage',
+          !b.region.trim() && 'région',
+          !b.non_vintage && !String(b.vintage).trim() && 'millésime (ou « Non millésimé »)',
+        ].filter(Boolean);
+        return manque.length ? <p className="tiny" style={{ margin: 0, color: 'var(--erreur)' }}>Pour enregistrer, il manque : {manque.join(', ')}.</p> : null;
+      })()}
       <div className="row">
-        <button className="btn" disabled={busy || !b.producer.trim() || !b.country || !b.region.trim() || !rowsText(b.grape_mix) || (!b.non_vintage && !String(b.vintage).trim())}>
+        <button className="btn" disabled={busy || !b.producer.trim() || !b.country || !b.appellation.trim() || !b.region.trim() || !rowsText(b.grape_mix) || (!b.non_vintage && !String(b.vintage).trim())}>
           {initial?.id ? 'Enregistrer les modifications' : 'Enregistrer la bouteille'}
         </button>
         {onCancel && (

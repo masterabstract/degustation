@@ -592,6 +592,8 @@ function TabProgress({ data }) {
   const totalCells = participants.length * bottles.length || 1;
   const notes = progress.ratings.length;
   const preds = progress.predictions.length;
+  const complete = progress.predictions.filter((x) => (x[2] ?? 5) >= 5).length; // la fiche (note) est facultative
+  const predOf = (p, b) => progress.predictions.find(([pp, bb]) => pp === p && bb === b);
 
   return (
     <>
@@ -599,12 +601,12 @@ function TabProgress({ data }) {
         <h2>Avancement en direct</h2>
         <p className="small muted">Mis à jour automatiquement toutes les quelques secondes.</p>
         <div className="legend small">
-          <span><span className="dot full" /> note et pronostic</span>
-          <span><span className="dot half" /> l’un des deux</span>
-          <span><span className="dot" /> rien</span>
+          <span><span className="dot full" /> pronostic complet</span>
+          <span><span className="dot half" /> pronostic incomplet</span>
+          <span><span className="dot" /> aucun pronostic</span>
         </div>
         <p className="small" style={{ marginTop: 10 }}>
-          {notes} notes sur {participants.length * bottles.length} · {preds} pronostics ({Math.round((preds / totalCells) * 100)} %)
+          {preds} pronostics ({Math.round((preds / totalCells) * 100)} %), dont {complete} complets (les 5 réponses à points remplies) · {notes} notes sur 20 (facultatives) · ★ = vin noté
         </p>
       </div>
       <div className="panel flush table-wrap">
@@ -627,10 +629,14 @@ function TabProgress({ data }) {
                 </td>
                 {ordered.map((b) => {
                   const r = has(progress.ratings, p.id, b.id);
-                  const pr = has(progress.predictions, p.id, b.id);
+                  const pp = predOf(p.id, b.id);
+                  const pr = !!pp;
+                  const full = pr && (pp[2] ?? 5) >= 5;
                   return (
                     <td key={b.id}>
-                      <span className={`dot ${r && pr ? 'full' : r || pr ? 'half' : ''}`} title={`${r ? 'Noté' : 'Pas noté'}, ${pr ? 'pronostic fait' : 'pas de pronostic'}`} />
+                      <span className={`dot ${full ? 'full' : pr ? 'half' : ''}`} title={`${pr ? (full ? 'Pronostic complet' : `Pronostic incomplet (${pp[2] ?? 0}/5)`) : 'Pas de pronostic'}${r ? ', vin noté' : ''}`} />
+                      {r && <span className="tiny" style={{ color: 'var(--or-fonce)', marginLeft: 2 }} aria-label="noté">★</span>}
+                      {pr && !full && <span className="tiny" style={{ display: 'block', color: 'var(--erreur)' }}>{pp[2] ?? 0}/5</span>}
                     </td>
                   );
                 })}
@@ -774,6 +780,7 @@ function TabReveal({ data, act, busy, code }) {
   const stats = (b) => ({
     fiches: progress.ratings.filter(([, bid]) => bid === b.id).length,
     pronos: progress.predictions.filter(([, bid]) => bid === b.id).length,
+    complets: progress.predictions.filter(([, bid, n]) => bid === b.id && (n ?? 5) >= 5).length,
   });
   const target = armed && armed !== 'finish' ? numbered.find((b) => b.number === armed) : null;
   return (
@@ -786,7 +793,7 @@ function TabReveal({ data, act, busy, code }) {
         {target ? (
           <div className="stack">
             <Notice kind="info">
-              Révéler le vin n°{target.number} ? {stats(target).fiches} fiche{stats(target).fiches > 1 ? 's' : ''} et {stats(target).pronos} pronostic{stats(target).pronos > 1 ? 's' : ''} enregistrés sur {participants.length} participants. Ensuite, plus personne ne pourra modifier sa fiche ni son pronostic sur ce vin.
+              Révéler le vin n°{target.number} ? {stats(target).pronos} pronostic{stats(target).pronos > 1 ? 's' : ''} enregistré{stats(target).pronos > 1 ? 's' : ''} sur {participants.length} participants (dont {stats(target).complets} complet{stats(target).complets > 1 ? 's' : ''}), et {stats(target).fiches} note{stats(target).fiches > 1 ? 's' : ''} sur 20 (facultatives). Ensuite, plus personne ne pourra modifier sa fiche ni son pronostic sur ce vin.
             </Notice>
             <button className="btn danger block" disabled={busy} onClick={async () => (await act('revealNumber', { number: target.number }, `Vin n°${target.number} révélé.`)) && setArmed(null)}>
               Oui, révéler le vin n°{target.number}
@@ -808,12 +815,12 @@ function TabReveal({ data, act, busy, code }) {
                 <button key={b.id} type="button" className="serve-btn" disabled={busy} aria-label={`Révéler le vin n°${b.number}`} onClick={() => setArmed(b.number)}>
                   <Capsule n={b.number} size="sm" />
                   <span className="tag" style={{ background: 'var(--trait-fort)' }}>
-                    {stats(b).fiches}/{participants.length}
+                    {stats(b).pronos}/{participants.length}
                   </span>
                 </button>
               ))}
             </div>
-            <p className="tiny muted">Le chiffre sous chaque vin : nombre de fiches remplies sur le nombre de participants.</p>
+            <p className="tiny muted">Le chiffre sous chaque vin : nombre de pronostics enregistrés sur le nombre de participants (le propriétaire de la bouteille ne pronostique pas pour des points).</p>
           </>
         ) : (
           <p className="small muted">{notServed.length ? 'Servez un vin (onglet Soirée) pour pouvoir le révéler.' : allDone ? 'Tous les vins servis sont révélés.' : 'Aucun vin servi pour l’instant.'}</p>
