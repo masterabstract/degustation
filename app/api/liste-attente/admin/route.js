@@ -14,6 +14,6 @@ export const POST = route(async (req) => {
     await new Promise((r) => setTimeout(r, 700));
     throw new HttpError(403, 'Mot de passe organisateur incorrect.');
   }
-  const rows = unwrap(await db().from('waitlist').select('email, prenom, groupe, created_at').order('created_at'));
+  const rows = unwrap(await db().from('waitlist').select('email, prenom, groupe, langue, created_at').order('created_at'));
   return json({ inscrits: rows.map((x, i) => ({ ...x, rang: i + 1, essai: i < PLACES_ESSAI })) });
 });

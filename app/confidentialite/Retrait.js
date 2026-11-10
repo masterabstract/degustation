@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 
-export default function Retrait() {
+const TX = {
+  fr: { email: 'Adresse e-mail', envoi: 'Effacement…', bouton: 'Effacer mon adresse', ok: 'C’est fait : si cette adresse était inscrite, elle a été effacée.', err: 'L’effacement n’a pas abouti. Vérifiez votre connexion et réessayez.' },
+  en: { email: 'Email address', envoi: 'Removing…', bouton: 'Remove my address', ok: 'Done: if this address was on the list, it has been removed.', err: 'The removal didn’t go through. Check your connection and try again.' },
+};
+
+export default function Retrait({ lang = 'fr' }) {
+  const t = TX[lang] || TX.fr;
   const [email, setEmail] = useState('');
   const [etat, setEtat] = useState(null);
   return (
@@ -20,14 +26,14 @@ export default function Retrait() {
       }}
     >
       <label className="field">
-        <span>Adresse e-mail</span>
+        <span>{t.email}</span>
         <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
       </label>
       <button className="btn ghost block" disabled={!email.trim() || etat === 'envoi'}>
-        {etat === 'envoi' ? 'Effacement…' : 'Effacer mon adresse'}
+        {etat === 'envoi' ? t.envoi : t.bouton}
       </button>
-      {etat === 'ok' && <p className="notice ok">C’est fait : si cette adresse était inscrite, elle a été effacée.</p>}
-      {etat === 'erreur' && <p className="notice error">L’effacement n’a pas abouti. Vérifiez votre connexion et réessayez.</p>}
+      {etat === 'ok' && <p className="notice ok">{t.ok}</p>}
+      {etat === 'erreur' && <p className="notice error">{t.err}</p>}
     </form>
   );
 }

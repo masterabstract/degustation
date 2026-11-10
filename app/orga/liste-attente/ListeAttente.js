@@ -80,7 +80,7 @@ export default function ListeAttente() {
                       <span className="wl-main">
                         <strong>{r.email}</strong>
                         <span className="tiny muted">
-                          {[r.prenom, r.groupe, date(r.created_at)].filter(Boolean).join(', ')}
+                          {[r.prenom, r.groupe, r.langue === 'en' ? 'anglais' : null, date(r.created_at)].filter(Boolean).join(', ')}
                           {r.essai ? ' (essai gratuit)' : ''}
                         </span>
                       </span>
