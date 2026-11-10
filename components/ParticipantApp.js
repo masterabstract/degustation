@@ -7,6 +7,8 @@ import { BAREME } from '@/lib/bareme';
 import BottleForm from './BottleForm';
 import { VintageTable } from './SheetPage';
 import { rememberSoiree, forgetSoiree } from '@/lib/memo';
+import ServeAlert from './ServeAlert';
+import DraftSync from './DraftSync';
 
 export function ratingDone(r) {
   return r && r.note !== null && r.note !== undefined;
@@ -48,8 +50,10 @@ export default function ParticipantApp({ code }) {
   return (
     <main>
       <Band title={tasting.name} sub={sub} right={data.isAdmin ? <Link href={`/admin/${code}`} className="small">Organiser</Link> : null} />
+      <ServeAlert code={code} tasting={tasting} />
       <div className="page stack">
         {error && <Notice kind="error">Connexion instable, nouvelle tentative automatique…</Notice>}
+        <DraftSync code={code} />
         {tasting.phase === 'preparation' && <Waiting name={me.name} />}
         <MyBottles data={data} code={code} onChange={(myBottles) => setData((d) => ({ ...d, myBottles }))} />
         {tasting.phase === 'revelation' && (

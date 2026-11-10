@@ -7,9 +7,11 @@ import { api, Band, Notice, Capsule, Chips, Scale, NoteInput, Loading, plural } 
 import Autocomplete from './Autocomplete';
 import RegionMap from './RegionMap';
 import AromaPicker from './AromaPicker';
+import ServeAlert from './ServeAlert';
 import { optionsFor, fillFromAppellation, fillFromRegion, describePatch, regionOptions, appellationOptions, grapeOptions, appellationGrapes } from '@/lib/autofill';
 import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
 import { BAREME, VINTAGE_DECADES } from '@/lib/bareme';
+import { readDraft, writeDraft, deleteDraft, sendPendingDrafts, isNetworkError } from '@/lib/brouillons';
 
 const EMPTY_RATING = {
   robe: null, intensite_visuelle: null, intensite_nez: null, aromes: [], acidite: null,
@@ -19,8 +21,13 @@ const EMPTY_PRED = { appellation: '', grapes: '', region: '', country: '', color
 
 const pick = (obj, keys) => Object.fromEntries(keys.map((k) => [k, obj?.[k] ?? null]));
 
-export default function SheetPage({ code, number }) {
+export default function SheetPage({ code, number: routeNumber }) {
   const router = useRouter();
+  // Numéro du vin affiché. Sans réseau, on passe d'un vin à l'autre sans recharger la page
+  // (le changement de page échouerait), en gardant l'adresse à jour.
+  const [number, setNumber] = useState(routeNumber);
+  useEffect(() => setNumber(routeNumber), [routeNumber]);
+  const [listBlocked, setListBlocked] = useState(false);
   const [state, setState] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [tab, setTab] = useState('prono'); // onglet 1 : pronostics, onglet 2 : fiche de dégustation
@@ -31,35 +38,94 @@ export default function SheetPage({ code, number }) {
   const filled = useRef({});
   const [autoNote, setAutoNote] = useState(null);
   const timer = useRef(null);
+  const tries = useRef(0); // essais d'envoi ratés à la suite (pour espacer les nouveaux essais)
+  const [retry, setRetry] = useState(0); // relance le chargement quand le réseau manquait
+  const [noNetwork, setNoNetwork] = useState(false);
+  const [lostDraft, setLostDraft] = useState(false);
   const latest = useRef({ rating, pred });
   latest.current = { rating, pred };
+  const latestBottle = useRef(null);
+  // Bouteille à laquelle appartiennent la saisie et les modifications en attente (dirty).
+  // Évite d'envoyer la fiche d'un vin sur un autre quand on change de vin pendant une coupure.
+  const dataFor = useRef(null);
+  const flushRef = useRef(null);
 
-  // Chargement initial
+  const stateRef = useRef(null);
+  stateRef.current = state;
+
+  // Prépare la saisie d'un vin : la copie gardée sur le téléphone (non envoyée, donc plus récente)
+  // l'emporte sur la version du serveur.
+  function initSheet(d, b) {
+    clearTimeout(timer.current);
+    setLostDraft(false);
+    dirty.current = { rating: false, prediction: false };
+    dataFor.current = null;
+    const s = d.sheets?.[b.id] || {};
+    let local = readDraft(code, b.id);
+    const lockedNow = d.tasting.phase !== 'degustation' || (d.tasting.revealed_numbers || []).includes(b.number);
+    if (local && lockedNow) {
+      deleteDraft(code, b.id); // vin révélé avant le retour du réseau : la fiche ne peut plus partir
+      if (local.dr || local.dp) setLostDraft(true);
+      local = null;
+    }
+    const r = local?.dr && local.rating ? { ...EMPTY_RATING, ...local.rating } : s.rating ? { ...EMPTY_RATING, ...pick(s.rating, Object.keys(EMPTY_RATING)) } : EMPTY_RATING;
+    const p = local?.dp && local.pred ? { ...EMPTY_PRED, ...local.pred } : s.prediction ? { ...EMPTY_PRED, ...pick(s.prediction, Object.keys(EMPTY_PRED)) } : EMPTY_PRED;
+    const nr = { ...r, aromes: r.aromes || [], commentaire: r.commentaire || '' };
+    const np = { ...p, grapes: p.grapes || '', region: p.region || '', country: p.country || '', appellation: p.appellation || '', vintage: p.vintage ?? '' };
+    setRating(nr);
+    setPred(np);
+    latest.current = { rating: nr, pred: np };
+    dataFor.current = b.id;
+    if (local?.dr) dirty.current.rating = true;
+    if (local?.dp) dirty.current.prediction = true;
+    if (dirty.current.rating || dirty.current.prediction) schedule(0);
+  }
+
+  // Chargement (et rechargement automatique quand le réseau manquait)
   useEffect(() => {
     let alive = true;
+    if (dataFor.current !== null && stateRef.current?.bottles?.find((x) => x.id === dataFor.current)?.number !== number) dataFor.current = null; // on change de vin
     api(`/api/t/${code}`)
       .then((d) => {
         if (!alive) return;
+        setNoNetwork(false);
         if (!d.me) return router.replace(`/t/${code}`);
         setState(d);
         const b = d.bottles.find((x) => x.number === number);
         if (!b) return;
-        const s = d.sheets[b.id] || {};
-        const localRaw = typeof localStorage !== 'undefined' ? safeGet(`dg_${code}_${b.id}`) : null;
-        const r = s.rating ? { ...EMPTY_RATING, ...pick(s.rating, Object.keys(EMPTY_RATING)) } : localRaw?.rating || EMPTY_RATING;
-        const p = s.prediction ? { ...EMPTY_PRED, ...pick(s.prediction, Object.keys(EMPTY_PRED)) } : localRaw?.pred || EMPTY_PRED;
-        setRating({ ...r, aromes: r.aromes || [], commentaire: r.commentaire || '' });
-        setPred({ ...p, grapes: p.grapes || '', region: p.region || '', country: p.country || '', appellation: p.appellation || '', vintage: p.vintage ?? '' });
-        if (!s.rating && localRaw?.rating) dirty.current.rating = true;
-        if (!s.prediction && localRaw?.pred) dirty.current.prediction = true;
-        if (dirty.current.rating || dirty.current.prediction) schedule(0);
+        initSheet(d, b);
+        sendPendingDrafts(code, b.id); // fiches d'autres vins restées sur le téléphone
       })
-      .catch((e) => alive && setLoadError(e));
+      .catch((e) => {
+        if (!alive) return;
+        if (isNetworkError(e)) {
+          // Pas de réseau : si la liste des vins est déjà connue, on ouvre quand même la fiche
+          // (elle sera gardée sur le téléphone), et on réessaie de charger tout seul.
+          const st = stateRef.current;
+          const b = st?.bottles?.find((x) => x.number === number);
+          if (b && dataFor.current !== b.id) initSheet(st, b);
+          setNoNetwork(true);
+          setTimeout(() => alive && setRetry((n) => n + 1), 3000);
+        } else setLoadError(e);
+      });
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, number]);
+  }, [code, number, retry]);
+
+  // Retour du réseau : on envoie tout de suite ce qui attendait.
+  useEffect(() => {
+    const h = () => {
+      tries.current = 0;
+      setListBlocked(false);
+      if (dirty.current.rating || dirty.current.prediction) schedule(0);
+      sendPendingDrafts(code, latestBottle.current);
+    };
+    window.addEventListener('online', h);
+    return () => window.removeEventListener('online', h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
 
   const bottles = state?.bottles || [];
   const idx = bottles.findIndex((b) => b.number === number);
@@ -67,6 +133,7 @@ export default function SheetPage({ code, number }) {
   // Verrouillé : hors dégustation, ou vin déjà révélé (les vins sont révélés un par un).
   const thisRevealed = !!state && (state.tasting.revealed_numbers || []).includes(Number(number));
   const locked = state?.tasting.phase !== 'degustation' || thisRevealed;
+  latestBottle.current = bottle?.id || null;
 
   // Surveille l'état de la soirée (pause, révélation) sans toucher à la saisie en cours.
   useEffect(() => {
@@ -80,39 +147,55 @@ export default function SheetPage({ code, number }) {
   }, [code]);
 
   async function flush() {
-    if (!bottle) return;
+    const bid = dataFor.current;
+    if (!bid) return;
     const { rating: r, pred: p } = latest.current;
-    const payload = { bottleId: bottle.id };
+    const payload = { bottleId: bid };
     if (dirty.current.rating) payload.rating = r;
     if (dirty.current.prediction) payload.prediction = { ...p, vintage: p.vintage === '' ? null : Number(p.vintage) };
     if (!payload.rating && !payload.prediction) return;
     dirty.current = { rating: false, prediction: false };
+    const sentAt = Date.now();
+    const current = () => dataFor.current === bid; // toujours sur ce vin ?
     setSave({ status: 'saving', msg: 'Enregistrement…' });
     try {
       await api(`/api/t/${code}/sheet`, { method: 'PUT', body: payload, keepalive: true });
+      tries.current = 0;
+      // Mémorise ce qui est enregistré (utile pour rouvrir ce vin plus tard sans réseau).
+      setState((st) => (st ? { ...st, sheets: { ...st.sheets, [bid]: { ...(st.sheets?.[bid] || {}), ...(payload.rating ? { rating: payload.rating } : {}), ...(payload.prediction ? { prediction: payload.prediction } : {}) } } } : st));
+      // La copie du téléphone n'est effacée que si rien n'a été modifié depuis l'envoi.
+      if ((readDraft(code, bid)?.at || 0) <= sentAt) deleteDraft(code, bid);
+      if (!current()) return;
       // Si une autre modification est arrivée pendant l'envoi, elle part juste après :
       // on n'affiche « Enregistré » que lorsque tout est vraiment enregistré.
-      if (dirty.current.rating || dirty.current.prediction) {
-        setSave({ status: 'pending', msg: 'Modification en cours…' });
-      } else {
-        setSave({ status: 'saved', msg: 'Enregistré' });
-        safeDel(`dg_${code}_${bottle.id}`);
-      }
+      if (dirty.current.rating || dirty.current.prediction) setSave({ status: 'pending', msg: 'Modification en cours…' });
+      else setSave({ status: 'saved', msg: 'Enregistré' });
     } catch (e) {
-      if (payload.rating) dirty.current.rating = true;
-      if (payload.prediction) dirty.current.prediction = true;
       if (e.status === 403) {
-        setSave({ status: 'error', msg: e.message });
+        deleteDraft(code, bid); // vin révélé ou soirée verrouillée : la fiche ne partira plus
+        if (current()) {
+          dirty.current = { rating: false, prediction: false };
+          setSave({ status: 'error', msg: e.message });
+        }
         return;
       }
-      setSave({ status: 'error', msg: 'Non enregistré, nouvel essai…' });
-      schedule(3000);
+      if (!current()) return; // on a changé de vin : la copie du téléphone repartira toute seule
+      if (payload.rating) dirty.current.rating = true;
+      if (payload.prediction) dirty.current.prediction = true;
+      // Nouvel essai de plus en plus espacé (3 s, 6 s, 12 s, puis toutes les 15 s) ;
+      // le retour du réseau déclenche aussi un envoi immédiat.
+      const wait = Math.min(15000, 3000 * 2 ** tries.current++);
+      if (isNetworkError(e)) setSave({ status: 'offline', msg: 'Hors ligne : gardé sur le téléphone' });
+      else setSave({ status: 'error', msg: 'Non enregistré, nouvel essai…' });
+      schedule(wait);
     }
   }
 
+  flushRef.current = flush;
+
   function schedule(ms = 700) {
     clearTimeout(timer.current);
-    timer.current = setTimeout(flush, ms);
+    timer.current = setTimeout(() => flushRef.current?.(), ms); // toujours la version à jour de flush
   }
 
   function change(kind, patch) {
@@ -120,13 +203,14 @@ export default function SheetPage({ code, number }) {
     if (kind === 'rating') setRating((x) => ({ ...x, ...patch }));
     else setPred((x) => ({ ...x, ...patch }));
     dirty.current[kind === 'rating' ? 'rating' : 'prediction'] = true;
-    setSave({ status: 'pending', msg: 'Modification en cours…' });
-    // Copie de secours sur le téléphone en cas de coupure réseau.
-    if (bottle) {
+    setSave((cur) => (cur.status === 'offline' ? cur : { status: 'pending', msg: 'Modification en cours…' }));
+    // Copie gardée sur le téléphone tant que l'envoi n'est pas confirmé (coupure réseau).
+    if (dataFor.current) {
       const next = { ...latest.current, [kind === 'rating' ? 'rating' : 'pred']: { ...(kind === 'rating' ? latest.current.rating : latest.current.pred), ...patch } };
-      safeSet(`dg_${code}_${bottle.id}`, { rating: next.rating, pred: next.pred });
+      latest.current = next;
+      writeDraft(code, dataFor.current, { rating: next.rating, pred: next.pred }, kind === 'rating' ? 'rating' : 'prediction');
     }
-    schedule();
+    schedule(save.status === 'offline' ? 1500 : 700);
   }
 
   // Enregistre avant de quitter la page.
@@ -142,9 +226,20 @@ export default function SheetPage({ code, number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bottle?.id]);
 
-  async function go(target) {
+  async function go(target, n = null) {
     clearTimeout(timer.current);
     await flush();
+    const offline = (typeof navigator !== 'undefined' && navigator.onLine === false) || noNetwork || save.status === 'offline';
+    if (offline) {
+      if (n === null) return setListBlocked(true); // la liste ne peut pas s'ouvrir sans réseau
+      setListBlocked(false);
+      setNumber(n);
+      try {
+        window.history.replaceState(window.history.state, '', target);
+      } catch {}
+      window.scrollTo(0, 0);
+      return;
+    }
     router.push(target);
   }
 
@@ -154,6 +249,16 @@ export default function SheetPage({ code, number }) {
         <Band title="Fiche indisponible" back={`/t/${code}`} />
         <div className="page">
           <Notice kind="error">{loadError.message}</Notice>
+        </div>
+      </main>
+    );
+  }
+  if (noNetwork && (!state || !bottle)) {
+    return (
+      <main>
+        <Band title={`Vin n°${number}`} back={`/t/${code}`} />
+        <div className="page">
+          <Notice kind="info">Pas de réseau pour l’instant. La fiche s’ouvrira toute seule dès que la connexion revient.</Notice>
         </div>
       </main>
     );
@@ -196,6 +301,7 @@ export default function SheetPage({ code, number }) {
         back={`/t/${code}`}
         right={<Capsule n={bottle.number} />}
       />
+      <ServeAlert code={code} tasting={state.tasting} currentPage={number} />
       <div className="page">
         <div className="sticky-tabs">
           <nav className="tabs" role="tablist">
@@ -208,6 +314,15 @@ export default function SheetPage({ code, number }) {
           </nav>
         </div>
 
+        {listBlocked && <Notice kind="info">Pas de réseau : la liste des vins s’ouvrira quand la connexion reviendra. Vous pouvez continuer à remplir les fiches avec les flèches ‹ et ›.</Notice>}
+        {(save.status === 'offline' || noNetwork) && (
+          <div className="offline-note" role="status">
+            <strong>Pas de réseau.</strong> Continuez normalement : tout ce que vous notez est gardé sur ce téléphone et partira tout seul dès que la connexion revient.
+          </div>
+        )}
+        {lostDraft && (
+          <Notice kind="error">Une partie de cette fiche n’a pas pu être envoyée avant la révélation du vin (pas de réseau). Elle ne compte donc pas : après la révélation, aucune réponse ne peut plus être ajoutée, pour que personne ne puisse tricher.</Notice>
+        )}
         {locked && (state.tasting.phase === 'revelee' || state.tasting.phase === 'revelation' || thisRevealed) && (
           <div className="panel stack center reveal-in" style={{ marginBottom: 12 }}>
             <h2>{thisRevealed && state.tasting.phase === 'degustation' ? `Le vin n°${number} est révélé` : state.tasting.phase === 'revelation' ? 'La révélation a commencé' : 'Les bouteilles sont révélées'}</h2>
@@ -444,14 +559,14 @@ export default function SheetPage({ code, number }) {
 
       <div className="bottom-bar">
         <div className="inner">
-          <button className="btn ghost sm" disabled={!prev} onClick={() => prev && go(`/t/${code}/vin/${prev.number}`)} aria-label="Vin précédent">
+          <button className="btn ghost sm" disabled={!prev} onClick={() => prev && go(`/t/${code}/vin/${prev.number}`, prev.number)} aria-label="Vin précédent">
             ‹ {prev ? `n°${prev.number}` : ''}
           </button>
           <div className={`save-state ${save.status}`} aria-live="polite">
             {save.msg || (locked ? 'Lecture seule' : 'Enregistrement automatique')}
           </div>
           {next ? (
-            <button className="btn sm" onClick={() => go(`/t/${code}/vin/${next.number}`)} aria-label="Vin suivant">
+            <button className="btn sm" onClick={() => go(`/t/${code}/vin/${next.number}`, next.number)} aria-label="Vin suivant">
               n°{next.number} ›
             </button>
           ) : (
@@ -477,24 +592,6 @@ function Crit({ n, title, hint, pts, children }) {
       {children}
     </section>
   );
-}
-
-function safeGet(k) {
-  try {
-    return JSON.parse(localStorage.getItem(k) || 'null');
-  } catch {
-    return null;
-  }
-}
-function safeSet(k, v) {
-  try {
-    localStorage.setItem(k, JSON.stringify(v));
-  } catch {}
-}
-function safeDel(k) {
-  try {
-    localStorage.removeItem(k);
-  } catch {}
 }
 
 export function VintageTable() {

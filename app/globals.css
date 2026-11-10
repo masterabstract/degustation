@@ -250,6 +250,8 @@ input[type='range'].note-range { width: 100%; margin-top: 14px; accent-color: va
 .save-state { flex: 1; text-align: center; font-size: 0.85rem; font-weight: 600; color: var(--taupe); }
 .save-state.saved { color: var(--vert); }
 .save-state.error { color: var(--erreur); }
+.save-state.offline { color: #9a6a00; }
+.offline-note { background: #fff6dc; border: 1px solid #e8c766; color: #5c4300; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 0.9rem; }
 
 /* ---------- Tableaux (organisateur) ---------- */
 .table-wrap { overflow-x: auto; }
@@ -471,3 +473,31 @@ details[open] > summary::before { content: '− '; }
 .aroma-count { display: inline-flex; align-items: center; gap: 8px; color: var(--taupe); font-size: 1.1rem; }
 .aroma-chips { padding: 0 12px 12px; }
 .chip-hint { font-weight: 400; opacity: 0.7; font-size: 0.85em; }
+
+/* ---------- Alerte « vin servi » ---------- */
+.serve-alert {
+  position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  width: min(520px, calc(100% - 20px)); z-index: 60;
+  background: var(--lie); color: var(--creme); border: 2px solid var(--or); border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35); padding: 12px 12px 8px;
+  animation: serve-in 0.35s ease-out both;
+}
+.serve-alert-inner { display: flex; align-items: center; gap: 10px; }
+.serve-alert-text { flex: 1; display: grid; min-width: 0; }
+.serve-alert-text strong { font-family: var(--serif); font-size: 1.3rem; line-height: 1.1; }
+.serve-alert-text span { font-size: 0.88rem; color: var(--or-clair); }
+.serve-alert-close { background: none; border: 0; color: var(--creme); font-size: 1.6rem; line-height: 1; padding: 4px 6px; cursor: pointer; }
+.serve-alert-sound { background: none; border: 0; color: var(--or-clair); opacity: 0.8; font-size: 0.78rem; text-decoration: underline; padding: 6px 0 0; cursor: pointer; }
+@keyframes serve-in { from { opacity: 0; transform: translate(-50%, -16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .serve-alert { animation: none; } }
+
+/* ---------- Trophées ---------- */
+.trophy-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.trophy { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: #fbf6ec; border: 1px solid var(--trait); }
+.trophy-icon { flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--lie); color: var(--or-clair); border: 2px solid var(--or); }
+.trophy.pif .trophy-icon { background: var(--or); color: var(--lie); border-color: var(--or-fonce); }
+.trophy.lanterne .trophy-icon { background: #8f1d1d; color: #ffd9b0; border-color: #c2410c; }
+.trophy-body { display: grid; gap: 1px; min-width: 0; }
+.trophy-title { font-family: var(--serif); font-weight: 600; font-size: 1.15rem; color: var(--lie); line-height: 1.15; }
+.trophy-who { font-weight: 700; overflow-wrap: anywhere; }
+.trophy-why { font-size: 0.82rem; color: var(--taupe); }

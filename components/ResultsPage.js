@@ -97,6 +97,7 @@ export default function ResultsPage({ code }) {
       <Band title="Résultats" sub={data.tasting.name} back={data.me ? `/t/${code}` : '/archives'} />
       <div className="page">
         <Podium data={data} animate={justFinished} />
+        <Trophies list={data.trophies || []} animate={justFinished} />
         <div className="sticky-tabs">
           <nav className="tabs" role="tablist">
             {TABS.map(([id, label]) => (
@@ -436,6 +437,47 @@ function Podium({ data, animate }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ---------- Trophées de la Confrérie ----------
+const TROPHY_ICON = { pif: 'nez', gps: 'carte', millesime: 'sablier', nez: 'grappe', lanterne: 'lanterne' };
+function TrophyIcon({ id }) {
+  const k = TROPHY_ICON[id];
+  const c = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  return (
+    <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+      {k === 'nez' && <path {...c} d="M12 3c-1 4-3.5 8-3.5 11.5A3.5 3.5 0 0 0 12 18a3.5 3.5 0 0 0 3.5-3.5M8.5 14.5c-1 0-2 .7-2 1.8 0 1 .8 1.7 1.8 1.7M15.5 14.5c1 0 2 .7 2 1.8 0 1-.8 1.7-1.8 1.7M9 21h6" />}
+      {k === 'carte' && <path {...c} d="M12 21s-6-5.6-6-10.5A6 6 0 0 1 18 10.5C18 15.4 12 21 12 21zM12 12.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />}
+      {k === 'sablier' && <path {...c} d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9" />}
+      {k === 'grappe' && <path {...c} d="M12 4c0-1 1-2 2.5-2M9.5 8.5a2 2 0 1 0 0-.01M14.5 8.5a2 2 0 1 0 0-.01M12 12a2 2 0 1 0 0-.01M7.5 12.5a2 2 0 1 0 0-.01M16.5 12.5a2 2 0 1 0 0-.01M10 16a2 2 0 1 0 0-.01M14 16a2 2 0 1 0 0-.01M12 19.5a2 2 0 1 0 0-.01" />}
+      {k === 'lanterne' && <path {...c} d="M10 3h4M12 3v2M8 7h8l-1 11H9L8 7zM9 18h6v3H9zM12 10v5" />}
+    </svg>
+  );
+}
+
+function Trophies({ list, animate }) {
+  if (!list.length) return null;
+  return (
+    <div className={`panel stack trophies ${animate ? 'reveal-in' : ''}`} style={{ marginBottom: 12 }}>
+      <div className="muted small center">Trophées de la Confrérie</div>
+      <ul className="trophy-list">
+        {list.map((t) => (
+          <li key={t.id} className={`trophy ${t.id}`}>
+            <span className="trophy-icon">
+              <TrophyIcon id={t.id} />
+            </span>
+            <span className="trophy-body">
+              <span className="trophy-title">{t.titre}</span>
+              <span className="trophy-who">{t.winners.join(' et ')}</span>
+              <span className="trophy-why">
+                {t.pour} · {t.detail}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
