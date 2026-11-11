@@ -83,7 +83,7 @@ export const POST = route(async (req) => {
     await new Promise((r) => setTimeout(r, 800)); // freine les essais au hasard
     throw new HttpError(403, 'Mot de passe organisateur incorrect.');
   }
-  const codes = [...new Set((Array.isArray(b.codes) ? b.codes : []).map((c) => String(c).toUpperCase()).filter((c) => /^[A-Z0-9]{4,8}$/.test(c)))];
+  const codes = [...new Set((Array.isArray(b.codes) ? b.codes : []).map((c) => String(c).toUpperCase()).filter((c) => /^[A-Z0-9]{4,10}$/.test(c)))];
   if (!codes.length) throw new HttpError(400, 'Choisissez au moins une soirée à effacer.');
   const deleted = unwrap(await db().from('tastings').delete().in('code', codes).eq('phase', 'revelee').select('code'));
   return json({ deleted: deleted.length });

@@ -17,7 +17,7 @@ export default function Accueil() {
       .then((d) => setOrga(!!d.organisateur))
       .catch(() => {});
   }, []);
-  const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const clean = code.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const mine = recent.filter((x) => x.role === 'participant').slice(0, 3);
 
   return (
@@ -66,13 +66,13 @@ export default function Accueil() {
               className="input code-input"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              maxLength={8}
+              maxLength={10}
               autoCapitalize="characters"
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
               inputMode="text"
-              placeholder="SYRAH42"
+              placeholder="SAVAGNIN"
               aria-label="Code de la dégustation"
             />
           </label>

@@ -49,7 +49,8 @@ export default function ParticipantApp({ code }) {
 
   return (
     <main>
-      <Band title={tasting.name} sub={sub} right={data.isAdmin ? <Link href={`/admin/${code}`} className="small">Organiser</Link> : null} />
+      {/* Aucun accès à l'organisation depuis les pages des participants, même pour l'organisateur qui joue. */}
+      <Band title={tasting.name} sub={sub} />
       <ServeAlert code={code} tasting={tasting} />
       <div className="page stack">
         {error && <Notice kind="error">Connexion instable, nouvelle tentative automatique…</Notice>}

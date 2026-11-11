@@ -28,10 +28,15 @@ export const POST = route(async (req) => {
 
   const adminToken = newToken();
   let tasting = null;
+  // Codes déjà pris par une soirée existante : jamais deux soirées avec le même code.
+  const pris = new Set(unwrap(await db().from('tastings').select('code')).map((x) => x.code));
   for (let i = 0; i < 25 && !tasting; i++) {
+    const code = codeVin(pris);
+    if (!code) break;
+    pris.add(code);
     const { data, error } = await db()
       .from('tastings')
-      .insert({ code: codeVin(), name, event_date: eventDate, admin_token_hash: hashToken(adminToken) })
+      .insert({ code, name, event_date: eventDate, admin_token_hash: hashToken(adminToken) })
       .select('id, code')
       .single();
     if (!error) tasting = data;

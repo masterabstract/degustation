@@ -278,8 +278,8 @@ table.grid .sub { display: block; font-size: 0.78rem; color: var(--taupe); }
 
 /* ---------- Code d'accès affiché ---------- */
 .access-code {
-  font-family: var(--serif); font-weight: 600; font-size: clamp(2rem, 10vw, 3rem); letter-spacing: 0.16em;
-  color: var(--lie); text-align: center; line-height: 1; padding-left: 0.16em; max-width: 100%; overflow-wrap: anywhere;
+  font-family: var(--serif); font-weight: 600; font-size: clamp(1.6rem, 8.6vw, 3rem); letter-spacing: 0.1em;
+  color: var(--lie); text-align: center; line-height: 1; padding-left: 0.1em; max-width: 100%; overflow-wrap: anywhere;
 }
 
 /* ---------- Résultats ---------- */
