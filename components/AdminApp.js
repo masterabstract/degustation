@@ -425,7 +425,7 @@ function TabParticipants({ data, act, busy }) {
                 <button
                   className="btn ghost sm"
                   onClick={() =>
-                    confirm(`Libérer « ${p.name} » ? Il pourra se reconnecter depuis un autre téléphone, ses notes sont conservées.`) &&
+                    confirm(`Libérer « ${p.name} » ? Son téléphone actuel sera déconnecté. Faites-le seulement quand ${p.name} est devant vous : la personne qui reprendra ce prénom verra ses bouteilles. Ses notes sont conservées.`) &&
                     act('releaseParticipant', { id: p.id }, 'Nom libéré.')
                   }
                 >
@@ -454,8 +454,8 @@ function TabParticipants({ data, act, busy }) {
         ))}
       </div>
       <p className="tiny muted">
-        « Libérer » sert si quelqu’un change de téléphone ou ferme son navigateur : il pourra choisir à nouveau son nom. Un participant peut aussi s’ajouter lui-même en rejoignant
-        la soirée.
+        Chaque téléphone reste lié au prénom choisi : un participant ne peut pas en changer. « Libérer » sert seulement si quelqu’un change de téléphone ou a vidé son navigateur : faites-le
+        quand la personne est devant vous, elle reprendra aussitôt son prénom et retrouvera ses notes et ses bouteilles. Un participant peut aussi s’ajouter lui-même en rejoignant la soirée.
       </p>
     </>
   );

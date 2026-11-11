@@ -88,7 +88,9 @@ export default function ParticipantApp({ code }) {
         )}
         {tasting.phase !== 'preparation' && <WineList data={data} code={code} />}
         {tasting.phase === 'degustation' && <Rules />}
-        <LeaveButton code={code} onLeft={refresh} />
+        <p className="center tiny muted">
+          Ce téléphone est lié à {me.name}. Pour changer de téléphone, demandez à l’organisateur de libérer votre prénom.
+        </p>
       </div>
     </main>
   );
@@ -246,23 +248,6 @@ function Rules() {
   );
 }
 
-function LeaveButton({ code, onLeft }) {
-  return (
-    <p className="center tiny">
-      <button
-        className="linklike muted"
-        onClick={async () => {
-          if (!confirm('Se déconnecter de ce téléphone ? Vos notes restent enregistrées et vous pourrez revenir en choisissant à nouveau votre nom.')) return;
-          await api(`/api/t/${code}/join`, { method: 'POST', body: { action: 'leave' } });
-          forgetSoiree(code);
-          onLeft();
-        }}
-      >
-        Ce n’est pas moi / changer de téléphone
-      </button>
-    </p>
-  );
-}
 
 function Join({ data, code, onJoined }) {
   const { tasting, participants } = data;
@@ -314,7 +299,7 @@ function Join({ data, code, onJoined }) {
                   </button>
                 ))}
               </div>
-              {participants.some((p) => p.taken) && <p className="tiny muted">Les noms barrés sont déjà utilisés sur un autre téléphone.</p>}
+              {participants.some((p) => p.taken) && <p className="tiny muted">Les noms barrés sont déjà liés à un autre téléphone.</p>}
               <button className="linklike small" style={{ alignSelf: 'flex-start' }} onClick={() => setOther(true)}>
                 Je ne suis pas dans la liste
               </button>
@@ -333,6 +318,7 @@ function Join({ data, code, onJoined }) {
               )}
             </>
           )}
+          <p className="tiny muted">Une fois votre prénom choisi, ce téléphone y reste lié : vous ne pourrez plus en changer. Seul l’organisateur peut le libérer.</p>
           <Notice kind="error">{error}</Notice>
           <button className="btn block" disabled={busy || (other ? !newName.trim() : !selected)} onClick={join}>
             {busy ? 'Connexion…' : 'C’est moi, entrer'}

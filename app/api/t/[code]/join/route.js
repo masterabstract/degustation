@@ -10,12 +10,9 @@ export const POST = route(async (req, { code }) => {
   const tasting = await getTasting(code);
   const b = await body(req);
 
-  if (b.action === 'leave') {
-    const me = await getParticipant(tasting);
-    if (me) unwrap(await db().from('participants').update({ token_hash: null, joined_at: null }).eq('id', me.id));
-    await clearParticipantCookie(tasting.code);
-    return json({ ok: true });
-  }
+  // Un téléphone reste lié au prénom choisi : il ne peut pas le quitter pour en prendre un autre
+  // (sinon on pourrait voir les bouteilles d'un autre participant). Seul l'organisateur libère un prénom.
+  if (b.action === 'leave') throw new HttpError(403, 'Ce téléphone reste lié à votre prénom. Seul l’organisateur peut le libérer.');
 
   const already = await getParticipant(tasting);
   if (already) return json({ ok: true, me: already });
@@ -29,7 +26,7 @@ export const POST = route(async (req, { code }) => {
       await db().from('participants').select('id, token_hash').eq('tasting_id', tasting.id).ilike('name', name.replace(/[%_]/g, '')).maybeSingle()
     );
     if (existing) {
-      if (existing.token_hash) throw new HttpError(409, 'Ce nom est déjà utilisé sur un autre téléphone. Choisissez-en un autre ou demandez à l’organisateur de le libérer.');
+      if (existing.token_hash) throw new HttpError(409, 'Ce prénom est déjà lié à un autre téléphone. Si c’est bien vous, demandez à l’organisateur de le libérer.');
       participantId = existing.id;
     } else {
       const created = unwrap(await db().from('participants').insert({ tasting_id: tasting.id, name }).select('id').single());
@@ -49,7 +46,7 @@ export const POST = route(async (req, { code }) => {
       .select('id, name')
   );
   if (!claimed.length) {
-    throw new HttpError(409, 'Ce nom est déjà utilisé sur un autre téléphone. Demandez à l’organisateur de le libérer si c’est bien vous.');
+    throw new HttpError(409, 'Ce prénom est déjà lié à un autre téléphone. Si c’est bien vous, demandez à l’organisateur de le libérer.');
   }
 
   await setParticipantCookie(tasting.code, token);
