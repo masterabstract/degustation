@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import SoireeEffacee from './SoireeEffacee';
 import Link from 'next/link';
 import { api, Band, Notice, Capsule, Loading, fmtNote } from './ui';
 import { sur20 } from '@/lib/bareme';
@@ -80,6 +81,7 @@ export default function ResultsPage({ code }) {
     };
   }, [code]);
 
+  if (error?.status === 404) return <SoireeEffacee code={code} />;
   if (error) {
     return (
       <main>

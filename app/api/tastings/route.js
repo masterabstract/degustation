@@ -1,7 +1,8 @@
-import { donnerAccesOffre } from '@/lib/acces-offre';
+import { estOrganisateur, ouvrirSessionOrga } from '@/lib/orga';
+import { codeVin } from '@/lib/codes-vin';
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body, cleanText } from '@/lib/http';
-import { newToken, hashToken, randomCode, setAdminCookie, organizerPasswordOk } from '@/lib/auth';
+import { newToken, hashToken, setAdminCookie, organizerPasswordOk } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,13 +12,14 @@ export const POST = route(async (req) => {
 
   // L'espace organisateur est réservé : le mot de passe ORGANIZER_PASSWORD est exigé.
   // (Sans mot de passe défini, la création n'est permise qu'en local, jamais sur le site en ligne.)
-  const ok = organizerPasswordOk(b.password);
+  // Déjà connecté avec le mot de passe sur cet appareil : inutile de le redonner.
+  const ok = (await estOrganisateur()) ? true : organizerPasswordOk(b.password);
   if (ok === null && process.env.NODE_ENV === 'production') throw new HttpError(403, 'Aucun mot de passe organisateur n’est défini sur le site (variable ORGANIZER_PASSWORD dans Vercel) : la création de soirée est désactivée.');
   if (ok === false) {
     await new Promise((r) => setTimeout(r, 700)); // freine les essais au hasard
     throw new HttpError(403, 'Mot de passe organisateur incorrect.');
   }
-  if (ok === true) await donnerAccesOffre(); // l'organisateur peut aussi voir la page de vente
+  if (ok === true) await ouvrirSessionOrga(); // appareil reconnu comme celui de l'organisateur (30 jours)
   if (b.check === true) return json({ ok: true }); // simple vérification avant d'afficher le formulaire
 
   const name = cleanText(b.name, 80);
@@ -26,10 +28,10 @@ export const POST = route(async (req) => {
 
   const adminToken = newToken();
   let tasting = null;
-  for (let i = 0; i < 6 && !tasting; i++) {
+  for (let i = 0; i < 25 && !tasting; i++) {
     const { data, error } = await db()
       .from('tastings')
-      .insert({ code: randomCode(5), name, event_date: eventDate, admin_token_hash: hashToken(adminToken) })
+      .insert({ code: codeVin(), name, event_date: eventDate, admin_token_hash: hashToken(adminToken) })
       .select('id, code')
       .single();
     if (!error) tasting = data;

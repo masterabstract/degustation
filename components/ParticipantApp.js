@@ -6,7 +6,8 @@ import { api, usePolling, Band, Notice, Capsule, Loading, fmtDate } from './ui';
 import { BAREME } from '@/lib/bareme';
 import BottleForm from './BottleForm';
 import { VintageTable } from './SheetPage';
-import { rememberSoiree, forgetSoiree } from '@/lib/memo';
+import { rememberSoiree } from '@/lib/memo';
+import SoireeEffacee from './SoireeEffacee';
 import { predictionStatus, missingFields } from '@/lib/pronostic';
 import ServeAlert from './ServeAlert';
 import DraftSync from './DraftSync';
@@ -27,16 +28,14 @@ export default function ParticipantApp({ code }) {
   useEffect(() => {
     if (meName) rememberSoiree({ code, name: tName, who: meName });
   }, [code, meName, tName]);
-  useEffect(() => {
-    if (error?.status === 404) forgetSoiree(code);
-  }, [code, error?.status]);
-
+  // Soirée effacée par l'organisateur (même pendant qu'on l'utilise) : plus aucun accès.
+  if (error?.status === 404) return <SoireeEffacee code={code} connue={!!data} />;
   if (error && !data) {
     return (
       <main>
         <Band title="Dégustation introuvable" back="/" />
         <div className="page">
-          <Notice kind="error">{error.status === 404 ? 'Ce code ne correspond à aucune soirée. Vérifiez-le auprès de l’organisateur.' : error.message}</Notice>
+          <Notice kind="error">{error.message}</Notice>
         </div>
       </main>
     );

@@ -278,8 +278,8 @@ table.grid .sub { display: block; font-size: 0.78rem; color: var(--taupe); }
 
 /* ---------- Code d'accès affiché ---------- */
 .access-code {
-  font-family: var(--serif); font-weight: 600; font-size: 3rem; letter-spacing: 0.22em;
-  color: var(--lie); text-align: center; line-height: 1; padding-left: 0.22em;
+  font-family: var(--serif); font-weight: 600; font-size: clamp(2rem, 10vw, 3rem); letter-spacing: 0.16em;
+  color: var(--lie); text-align: center; line-height: 1; padding-left: 0.16em; max-width: 100%; overflow-wrap: anywhere;
 }
 
 /* ---------- Résultats ---------- */
@@ -807,3 +807,25 @@ details[open] > summary::before { content: '− '; }
 .gd-appli-txt { color: var(--or-clair); font-size: 1.06rem; max-width: 40em; margin: 0 0 14px; }
 .gd-appli-bientot { color: #fff; font-weight: 600; margin-bottom: 28px; }
 .gd-appli-in { display: grid; gap: 24px; }
+
+/* Appli organisateur : liste de toutes les soirées (ouvrir, modifier, effacer) */
+.orga-logo.petit { width: min(96px, 28vw); }
+.orga-carte { border-radius: 14px; background: var(--papier); border: 1px solid var(--trait); overflow: hidden; }
+.orga-carte.danger { border-color: #e7b9ae; }
+.orga-carte .orga-soiree { border: 0; border-radius: 0; background: transparent; padding: 12px 14px 6px; }
+.orga-carte .orga-soiree:hover strong { color: var(--bordeaux); }
+.orga-code { flex: none; font-family: var(--serif); font-weight: 600; font-size: 1.05rem; letter-spacing: 0.04em; color: var(--lie); background: #f3e9d6; border: 1px solid var(--trait-fort); border-radius: 8px; padding: 2px 8px; }
+.orga-actions { display: flex; align-items: center; gap: 16px; padding: 4px 14px 12px; flex-wrap: wrap; }
+.orga-actions .pill { margin-right: auto; }
+.orga-actions .linklike { min-height: 32px; }
+.orga-actions .orga-del { color: var(--erreur); }
+.orga-edit, .orga-effacer { padding: 12px 14px 14px; border-top: 1px solid var(--trait); }
+.orga-effacer { background: #fbeae6; }
+.orga-effacer p { margin: 0; line-height: 1.5; color: #4a1a12; }
+.orga-liens { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 18px; font-size: 0.9rem; padding: 6px 0 18px; }
+.install-card > summary { cursor: pointer; font-family: var(--serif); font-weight: 600; font-size: 1.2rem; color: var(--lie); }
+@media (max-width: 360px) { .orga-code { font-size: 0.92rem; padding: 2px 6px; } }
+.band-pill { flex: none; font-size: 0.82rem; font-weight: 700; color: var(--lie) !important; background: var(--or); padding: 6px 12px; border-radius: 999px; text-decoration: none; }
+.btn.ghost.danger-txt { color: var(--erreur); }
+.orga-effacer { border-radius: 12px; }
+.panel > .orga-effacer { border-top: 0; }

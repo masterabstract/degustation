@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { api, usePolling, Band, Notice, Capsule, Chips, Loading, fmtDate } from './ui';
 import BottleForm from './BottleForm';
 import QrCode from './QrCode';
-import { rememberSoiree } from '@/lib/memo';
+import { rememberSoiree, forgetSoiree } from '@/lib/memo';
+import OrgaConnexion from './OrgaConnexion';
 
 const PHASE_LABEL = {
   preparation: 'En préparation',
@@ -24,11 +25,19 @@ const TABS = [
 
 // Icônes de la barre d'onglets en bas de l'écran (appli organisateur installée).
 function TabIcon({ id }) {
-  const c = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  const c = {
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.9,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+  };
   return (
     <svg className="tab-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
       {id === 'accueil' && <path {...c} d="M8 3h8l-1 6a3 3 0 0 1-6 0L8 3zM12 12v7M8 21h8" />}
-      {id === 'participants' && <path {...c} d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5M16 4.5a3.3 3.3 0 0 1 0 6.3M18 14.8c1.9.7 3.1 2.6 3.5 5.2" />}
+      {id === 'participants' && (
+        <path {...c} d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5M16 4.5a3.3 3.3 0 0 1 0 6.3M18 14.8c1.9.7 3.1 2.6 3.5 5.2" />
+      )}
       {id === 'bouteilles' && <path {...c} d="M10 2h4v4l1.5 2.5c.6 1 1 2.2 1 3.4V21a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-9.1c0-1.2.4-2.4 1-3.4L10 6V2zM7.5 13h9" />}
       {id === 'suivi' && <path {...c} d="M4 20V10M10 20V4M16 20v-7M22 20H2" />}
       {id === 'revelation' && <path {...c} d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />}
@@ -49,7 +58,10 @@ export default function AdminApp({ code }) {
     (async () => {
       if (key) {
         try {
-          await api(`/api/admin/${code}/login`, { method: 'POST', body: { key } });
+          await api(`/api/admin/${code}/login`, {
+            method: 'POST',
+            body: { key },
+          });
           window.history.replaceState(null, '', `/admin/${code}`);
         } catch (e) {
           setError(e.message);
@@ -59,17 +71,18 @@ export default function AdminApp({ code }) {
         await api(`/api/admin/${code}`);
         setAuthed(true);
       } catch (e) {
+        if (e.status === 404) {
+          forgetSoiree(code);
+          setAuthed('absente');
+          return;
+        }
         setAuthed(false);
         if (e.status !== 401) setError(e.message);
       }
     })();
   }, [code]);
 
-  const { data, setData, error: pollError } = usePolling(
-    () => (authed ? api(`/api/admin/${code}`) : Promise.resolve(null)),
-    4000,
-    [authed, code]
-  );
+  const { data, setData, error: pollError } = usePolling(() => (authed ? api(`/api/admin/${code}`) : Promise.resolve(null)), 4000, [authed, code]);
   const orgName = data?.tasting?.name;
   useEffect(() => {
     if (orgName) rememberSoiree({ code, name: orgName, role: 'organisateur' });
@@ -79,7 +92,10 @@ export default function AdminApp({ code }) {
     setBusy(true);
     setError(null);
     try {
-      const d = await api(`/api/admin/${code}`, { method: 'POST', body: { action, ...payload } });
+      const d = await api(`/api/admin/${code}`, {
+        method: 'POST',
+        body: { action, ...payload },
+      });
       setData(d);
       if (okMsg) {
         setFlash(okMsg);
@@ -95,7 +111,8 @@ export default function AdminApp({ code }) {
   }
 
   if (authed === null) return <Loading />;
-  if (!authed) return <AdminLogin code={code} error={error} onDone={() => window.location.reload()} />;
+  if (authed === 'absente' || pollError?.status === 404) return <SoireeAbsente code={code} />;
+  if (!authed) return <AdminLogin code={code} />;
   if (!data) return <Loading />;
 
   const { tasting } = data;
@@ -106,6 +123,11 @@ export default function AdminApp({ code }) {
       <Band
         wide
         back="/orga"
+        right={
+          <Link href="/orga" className="band-pill">
+            Mes soirées
+          </Link>
+        }
         title={tasting.name}
         sub={`Organisateur · ${PHASE_LABEL[tasting.phase]}${tasting.event_date ? ` · ${fmtDate(tasting.event_date)}` : ''}`}
       />
@@ -147,11 +169,27 @@ export default function AdminApp({ code }) {
 }
 
 // ---------------------------------------------------------------
-function AdminLogin({ code, error: initialError, onDone }) {
-  const [key, setKey] = useState('');
-  const [error, setError] = useState(initialError);
+function SoireeAbsente({ code }) {
+  return (
+    <main>
+      <Band title="Soirée effacée" sub={`Code ${code}`} back="/orga" />
+      <div className="page stack">
+        <div className="panel stack center">
+          <p>Cette soirée n’existe plus : elle a été effacée, ou le code est inconnu.</p>
+          <Link href="/orga" className="btn block">
+            Retour à mes soirées
+          </Link>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// Pas connecté comme organisateur : un participant est renvoyé vers sa soirée ;
+// l'organisateur donne le mot de passe organisateur (une fois par appareil).
+function AdminLogin({ code }) {
   const [me, setMe] = useState(undefined); // participant connecté sur ce téléphone ?
-  const [showKey, setShowKey] = useState(false);
+  const [orga, setOrga] = useState(false);
   useEffect(() => {
     api(`/api/t/${code}`)
       .then((d) => setMe(d.me || null))
@@ -159,8 +197,7 @@ function AdminLogin({ code, error: initialError, onDone }) {
   }, [code]);
   if (me === undefined) return <Loading />;
 
-  // Un participant arrivé ici par erreur : l'espace est réservé, on le renvoie vers sa soirée.
-  if (me && !showKey) {
+  if (me && !orga) {
     return (
       <main>
         <Band title="Espace réservé" sub={`Soirée ${code}`} />
@@ -173,41 +210,14 @@ function AdminLogin({ code, error: initialError, onDone }) {
               Retour à ma soirée
             </Link>
           </div>
-          <button type="button" className="linklike small" style={{ alignSelf: 'center' }} onClick={() => setShowKey(true)}>
+          <button type="button" className="linklike small" style={{ alignSelf: 'center' }} onClick={() => setOrga(true)}>
             Je suis l’organisateur
           </button>
         </div>
       </main>
     );
   }
-
-  return (
-    <main>
-      <Band title="Espace organisateur" sub={`Soirée ${code}`} back={me ? `/t/${code}` : '/orga'} />
-      <form
-        className="page stack"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          try {
-            const k = key.includes('cle=') ? new URL(key).searchParams.get('cle') : key;
-            await api(`/api/admin/${code}/login`, { method: 'POST', body: { key: k } });
-            onDone();
-          } catch (e) {
-            setError(e.message);
-          }
-        }}
-      >
-        <div className="panel stack">
-          <p>Ouvrez le lien organisateur reçu à la création de la soirée, ou collez-le ci-dessous.</p>
-          <input className="input" value={key} onChange={(e) => setKey(e.target.value)} placeholder="Lien ou clé organisateur" />
-          <Notice kind="error">{error}</Notice>
-          <button className="btn block" disabled={!key.trim()}>
-            Accéder
-          </button>
-        </div>
-      </form>
-    </main>
-  );
+  return <OrgaConnexion retour={me ? `/t/${code}` : '/'} retourLabel={me ? 'Retour à ma soirée' : 'Je suis participant : retour à l’accueil'} />;
 }
 
 // ---------------------------------------------------------------
@@ -221,9 +231,21 @@ function TabHome({ data, act, busy, code, setTab }) {
   const without = participants.filter((p) => p.bottles === 0).length;
 
   const steps = [
-    { done: participants.length > 0, text: `${participants.length} participant${participants.length > 1 ? 's' : ''} inscrit${participants.length > 1 ? 's' : ''}`, tab: 'participants' },
-    { done: bottles.length > 0, text: `${bottles.length} bouteille${bottles.length > 1 ? 's' : ''} enregistrée${bottles.length > 1 ? 's' : ''} par les participants${without ? ` (${without} sans bouteille)` : ''}`, tab: 'bouteilles' },
-    { done: numbered, text: numbered ? 'Numéros anonymes attribués' : 'Numéros attribués automatiquement au lancement', tab: 'bouteilles' },
+    {
+      done: participants.length > 0,
+      text: `${participants.length} participant${participants.length > 1 ? 's' : ''} inscrit${participants.length > 1 ? 's' : ''}`,
+      tab: 'participants',
+    },
+    {
+      done: bottles.length > 0,
+      text: `${bottles.length} bouteille${bottles.length > 1 ? 's' : ''} enregistrée${bottles.length > 1 ? 's' : ''} par les participants${without ? ` (${without} sans bouteille)` : ''}`,
+      tab: 'bouteilles',
+    },
+    {
+      done: numbered,
+      text: numbered ? 'Numéros anonymes attribués' : 'Numéros attribués automatiquement au lancement',
+      tab: 'bouteilles',
+    },
   ];
 
   return (
@@ -259,7 +281,13 @@ function TabHome({ data, act, busy, code, setTab }) {
       {bigQr && (
         <div className="overlay" role="dialog" aria-label="QR code en grand" onClick={() => setBigQr(false)}>
           <h2>{tasting.name}</h2>
-          <div style={{ background: 'var(--papier)', padding: 12, borderRadius: 16 }}>
+          <div
+            style={{
+              background: 'var(--papier)',
+              padding: 12,
+              borderRadius: 16,
+            }}
+          >
             <QrCode text={joinUrl} size={Math.min(320, typeof window !== 'undefined' ? window.innerWidth - 80 : 320)} />
           </div>
           <div>Scannez avec l’appareil photo de votre téléphone</div>
@@ -290,9 +318,7 @@ function TabHome({ data, act, busy, code, setTab }) {
       {tasting.phase === 'degustation' && (
         <div className="panel stack">
           <h2>Vin en cours de service</h2>
-          <p className="small muted">
-            Touchez le numéro que vous servez : il passe en tête de liste et s’affiche « en cours » sur tous les téléphones.
-          </p>
+          <p className="small muted">Touchez le numéro que vous servez : il passe en tête de liste et s’affiche « en cours » sur tous les téléphones.</p>
           <ServePicker data={data} act={act} busy={busy} />
           <div className="row">
             <button className="btn gold" onClick={() => setTab('revelation')}>
@@ -328,9 +354,7 @@ function TabHome({ data, act, busy, code, setTab }) {
         </div>
       )}
 
-      <DeleteTasting code={code} name={tasting.name} />
-
-      <AppLink code={code} />
+      <GererSoiree code={code} tasting={tasting} act={act} busy={busy} />
 
       <div className="panel stack">
         <h2>Sauvegarde</h2>
@@ -340,49 +364,6 @@ function TabHome({ data, act, busy, code, setTab }) {
         </a>
       </div>
     </>
-  );
-}
-
-// Appli organisateur : installer l'appli, et récupérer le lien organisateur pour s'y connecter.
-function AppLink({ code }) {
-  const [state, setState] = useState(null); // null | 'copie' | 'affiche' | message d'erreur
-  const [url, setUrl] = useState('');
-  async function get() {
-    const r = await api(`/api/admin/${code}/lien`);
-    setUrl(r.url);
-    return r.url;
-  }
-  return (
-    <div className="panel stack">
-      <h2>Appli organisateur</h2>
-      <p className="small muted">Installez l’appli « Confrérie Orga » sur votre téléphone pour piloter la soirée en plein écran. Sur iPhone, l’appli est séparée de Safari : collez-y une fois votre lien organisateur.</p>
-      <Link href="/orga" className="btn ghost block">
-        Ouvrir l’appli organisateur
-      </Link>
-      <button
-        type="button"
-        className="btn ghost block"
-        onClick={async () => {
-          try {
-            const u = url || (await get());
-            await navigator.clipboard.writeText(u);
-            setState('copie');
-          } catch {
-            try {
-              await get();
-              setState('affiche');
-            } catch (e) {
-              setState(e.message);
-            }
-          }
-        }}
-      >
-        {state === 'copie' ? 'Lien organisateur copié' : 'Copier mon lien organisateur'}
-      </button>
-      {state === 'affiche' && url && <input className="input small" readOnly value={url} onFocus={(e) => e.target.select()} aria-label="Lien organisateur" />}
-      {state && state !== 'copie' && state !== 'affiche' && <Notice kind="error">{state}</Notice>}
-      <p className="tiny muted">Gardez ce lien pour vous : il donne accès au pilotage de la soirée (pas au contenu des bouteilles).</p>
-    </div>
   );
 }
 
@@ -398,7 +379,10 @@ function TabParticipants({ data, act, busy }) {
         className="panel stack"
         onSubmit={async (e) => {
           e.preventDefault();
-          const list = names.split(/[\n,;]/).map((s) => s.trim()).filter(Boolean);
+          const list = names
+            .split(/[\n,;]/)
+            .map((s) => s.trim())
+            .filter(Boolean);
           if (list.length && (await act('addParticipants', { names: list }, 'Participants ajoutés.'))) setNames('');
         }}
       >
@@ -417,14 +401,21 @@ function TabParticipants({ data, act, busy }) {
               <div className="name">{p.name}</div>
               <div className="row tiny" style={{ marginTop: 4, gap: 6 }}>
                 {p.connected ? <span className="pill green">Connecté</span> : <span className="pill">Pas encore connecté</span>}
-                <span className="pill">{bottlesOf(p.id)} bouteille{bottlesOf(p.id) > 1 ? 's' : ''}</span>
+                <span className="pill">
+                  {bottlesOf(p.id)} bouteille{bottlesOf(p.id) > 1 ? 's' : ''}
+                </span>
                 {p.hors_concours && <span className="pill red">Hors concours</span>}
               </div>
               <label className="row small" style={{ marginTop: 8, gap: 8 }}>
                 <input
                   type="checkbox"
                   checked={p.hors_concours}
-                  onChange={(e) => act('updateParticipant', { id: p.id, hors_concours: e.target.checked })}
+                  onChange={(e) =>
+                    act('updateParticipant', {
+                      id: p.id,
+                      hors_concours: e.target.checked,
+                    })
+                  }
                 />
                 Hors concours pour les pronostics
               </label>
@@ -433,7 +424,10 @@ function TabParticipants({ data, act, busy }) {
               {p.connected && (
                 <button
                   className="btn ghost sm"
-                  onClick={() => confirm(`Libérer « ${p.name} » ? Il pourra se reconnecter depuis un autre téléphone, ses notes sont conservées.`) && act('releaseParticipant', { id: p.id }, 'Nom libéré.')}
+                  onClick={() =>
+                    confirm(`Libérer « ${p.name} » ? Il pourra se reconnecter depuis un autre téléphone, ses notes sont conservées.`) &&
+                    act('releaseParticipant', { id: p.id }, 'Nom libéré.')
+                  }
                 >
                   Libérer
                 </button>
@@ -460,7 +454,8 @@ function TabParticipants({ data, act, busy }) {
         ))}
       </div>
       <p className="tiny muted">
-        « Libérer » sert si quelqu’un change de téléphone ou ferme son navigateur : il pourra choisir à nouveau son nom. Un participant peut aussi s’ajouter lui-même en rejoignant la soirée.
+        « Libérer » sert si quelqu’un change de téléphone ou ferme son navigateur : il pourra choisir à nouveau son nom. Un participant peut aussi s’ajouter lui-même en rejoignant
+        la soirée.
       </p>
     </>
   );
@@ -497,7 +492,13 @@ function TabBottles({ data, act, busy }) {
         {participants.map((p) => (
           <div key={p.id} className="item" style={{ alignItems: 'center' }}>
             <div className="grow name">{p.name}</div>
-            {p.bottles > 0 ? <span className="pill green">{p.bottles} bouteille{p.bottles > 1 ? 's' : ''}</span> : <span className="pill red">Aucune</span>}
+            {p.bottles > 0 ? (
+              <span className="pill green">
+                {p.bottles} bouteille{p.bottles > 1 ? 's' : ''}
+              </span>
+            ) : (
+              <span className="pill red">Aucune</span>
+            )}
           </div>
         ))}
       </div>
@@ -506,13 +507,17 @@ function TabBottles({ data, act, busy }) {
         <div className="panel stack">
           <h2>Numéros anonymes</h2>
           <p className="small muted">
-            Les numéros sont attribués au hasard automatiquement au lancement de la dégustation. Vous pouvez aussi les tirer dès maintenant, pour que chacun puisse étiqueter sa bouteille masquée (chaussette, papier aluminium) avant de commencer.
+            Les numéros sont attribués au hasard automatiquement au lancement de la dégustation. Vous pouvez aussi les tirer dès maintenant, pour que chacun puisse étiqueter sa
+            bouteille masquée (chaussette, papier aluminium) avant de commencer.
           </p>
           <div className="row">
             <button
               className="btn gold"
               disabled={busy || !bottles.length}
-              onClick={() => (!tasting.numbers_drawn || confirm('Retirer au sort TOUS les numéros ? Les étiquettes déjà posées seront fausses.')) && act('drawNumbers', { mode: 'all' }, 'Numéros tirés au sort.')}
+              onClick={() =>
+                (!tasting.numbers_drawn || confirm('Retirer au sort TOUS les numéros ? Les étiquettes déjà posées seront fausses.')) &&
+                act('drawNumbers', { mode: 'all' }, 'Numéros tirés au sort.')
+              }
             >
               {tasting.numbers_drawn ? 'Retirer tous les numéros' : 'Tirer les numéros au sort'}
             </button>
@@ -536,7 +541,8 @@ function TabBottles({ data, act, busy }) {
         <div className="panel stack">
           <h2>Numéros</h2>
           <p className="small muted">
-            Une bouteille ajoutée pendant la dégustation reçoit automatiquement le numéro suivant et apparaît aussitôt sur tous les téléphones. Son propriétaire voit le numéro à écrire dessus.
+            Une bouteille ajoutée pendant la dégustation reçoit automatiquement le numéro suivant et apparaît aussitôt sur tous les téléphones. Son propriétaire voit le numéro à
+            écrire dessus.
           </p>
           <div className="row" style={{ gap: 8 }}>
             {bottles.map((b) => (
@@ -550,7 +556,9 @@ function TabBottles({ data, act, busy }) {
         <div className="panel flush">
           <div className="item" style={{ display: 'block' }}>
             <h2 style={{ margin: 0 }}>Bouteilles révélées</h2>
-            <p className="small muted" style={{ margin: '4px 0 0' }}>Vous pouvez corriger une faute : les classements se recalculent.</p>
+            <p className="small muted" style={{ margin: '4px 0 0' }}>
+              Vous pouvez corriger une faute : les classements se recalculent.
+            </p>
           </div>
           {bottles.map((b) =>
             editing === b.id ? (
@@ -576,7 +584,7 @@ function TabBottles({ data, act, busy }) {
                   </button>
                 </div>
               </div>
-            )
+            ),
           )}
         </div>
       )}
@@ -601,12 +609,19 @@ function TabProgress({ data }) {
         <h2>Avancement en direct</h2>
         <p className="small muted">Mis à jour automatiquement toutes les quelques secondes.</p>
         <div className="legend small">
-          <span><span className="dot full" /> pronostic complet</span>
-          <span><span className="dot half" /> pronostic incomplet</span>
-          <span><span className="dot" /> aucun pronostic</span>
+          <span>
+            <span className="dot full" /> pronostic complet
+          </span>
+          <span>
+            <span className="dot half" /> pronostic incomplet
+          </span>
+          <span>
+            <span className="dot" /> aucun pronostic
+          </span>
         </div>
         <p className="small" style={{ marginTop: 10 }}>
-          {preds} pronostics ({Math.round((preds / totalCells) * 100)} %), dont {complete} complets (les 5 réponses à points remplies) · {notes} notes sur 20 (facultatives) · ★ = vin noté
+          {preds} pronostics ({Math.round((preds / totalCells) * 100)} %), dont {complete} complets (les 5 réponses à points remplies) · {notes} notes sur 20 (facultatives) · ★ =
+          vin noté
         </p>
       </div>
       <div className="panel flush table-wrap">
@@ -634,9 +649,20 @@ function TabProgress({ data }) {
                   const full = pr && (pp[2] ?? 5) >= 5;
                   return (
                     <td key={b.id}>
-                      <span className={`dot ${full ? 'full' : pr ? 'half' : ''}`} title={`${pr ? (full ? 'Pronostic complet' : `Pronostic incomplet (${pp[2] ?? 0}/5)`) : 'Pas de pronostic'}${r ? ', vin noté' : ''}`} />
-                      {r && <span className="tiny" style={{ color: 'var(--or-fonce)', marginLeft: 2 }} aria-label="noté">★</span>}
-                      {pr && !full && <span className="tiny" style={{ display: 'block', color: 'var(--erreur)' }}>{pp[2] ?? 0}/5</span>}
+                      <span
+                        className={`dot ${full ? 'full' : pr ? 'half' : ''}`}
+                        title={`${pr ? (full ? 'Pronostic complet' : `Pronostic incomplet (${pp[2] ?? 0}/5)`) : 'Pas de pronostic'}${r ? ', vin noté' : ''}`}
+                      />
+                      {r && (
+                        <span className="tiny" style={{ color: 'var(--or-fonce)', marginLeft: 2 }} aria-label="noté">
+                          ★
+                        </span>
+                      )}
+                      {pr && !full && (
+                        <span className="tiny" style={{ display: 'block', color: 'var(--erreur)' }}>
+                          {pp[2] ?? 0}/5
+                        </span>
+                      )}
                     </td>
                   );
                 })}
@@ -654,7 +680,10 @@ function ServePicker({ data, act, busy }) {
   const { tasting, bottles } = data;
   const served = new Set(tasting.served_numbers || []);
   const shown = new Set(tasting.revealed_numbers || []);
-  const numbers = bottles.map((b) => b.number).filter(Boolean).sort((a, b) => a - b);
+  const numbers = bottles
+    .map((b) => b.number)
+    .filter(Boolean)
+    .sort((a, b) => a - b);
   if (!numbers.length) return <p className="small muted">Aucune bouteille pour l’instant.</p>;
   return (
     <>
@@ -670,7 +699,17 @@ function ServePicker({ data, act, busy }) {
             onClick={() => act('serve', { number: n }, `On sert le n°${n}.`)}
           >
             <Capsule n={n} size="sm" />
-            {shown.has(n) ? <span className="tag" style={{ background: 'var(--bordeaux)' }}>révélé</span> : tasting.current_number === n ? <span className="tag">en cours</span> : served.has(n) ? <span className="tag" style={{ background: 'var(--trait-fort)' }}>servi</span> : null}
+            {shown.has(n) ? (
+              <span className="tag" style={{ background: 'var(--bordeaux)' }}>
+                révélé
+              </span>
+            ) : tasting.current_number === n ? (
+              <span className="tag">en cours</span>
+            ) : served.has(n) ? (
+              <span className="tag" style={{ background: 'var(--trait-fort)' }}>
+                servi
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
@@ -720,7 +759,9 @@ function TabReveal({ data, act, busy, code }) {
         <div className="panel stack">
           <h2>Révélation vin par vin</h2>
           <p className="small">
-            {done.length} bouteille{done.length > 1 ? 's' : ''} révélée{done.length > 1 ? 's' : ''} sur {bottles.length}. Chaque révélation s’affiche sur tous les téléphones après un compte à rebours, avec les points de chacun et le classement provisoire.
+            {done.length} bouteille{done.length > 1 ? 's' : ''} révélée
+            {done.length > 1 ? 's' : ''} sur {bottles.length}. Chaque révélation s’affiche sur tous les téléphones après un compte à rebours, avec les points de chacun et le
+            classement provisoire.
           </p>
           {left.length > 0 ? (
             <>
@@ -732,7 +773,14 @@ function TabReveal({ data, act, busy, code }) {
                 <summary className="small">Ou choisir la bouteille à révéler</summary>
                 <div className="serve-grid" style={{ marginTop: 10 }}>
                   {left.map((b) => (
-                    <button key={b.id} type="button" className="serve-btn" disabled={busy} aria-label={`Révéler le vin n°${b.number}`} onClick={() => act('revealNumber', { number: b.number }, `Vin n°${b.number} révélé.`)}>
+                    <button
+                      key={b.id}
+                      type="button"
+                      className="serve-btn"
+                      disabled={busy}
+                      aria-label={`Révéler le vin n°${b.number}`}
+                      onClick={() => act('revealNumber', { number: b.number }, `Vin n°${b.number} révélé.`)}
+                    >
                       <Capsule n={b.number} size="sm" />
                     </button>
                   ))}
@@ -788,14 +836,24 @@ function TabReveal({ data, act, busy, code }) {
       <div className="panel stack">
         <h2>Révéler un vin</h2>
         <p className="small">
-          {done.length} vin{done.length > 1 ? 's' : ''} révélé{done.length > 1 ? 's' : ''} sur {numbered.length}. Révélez chaque vin quand tout le monde l’a goûté : il s’affiche sur tous les téléphones après un compte à rebours, avec les points de chacun et le classement provisoire. Sa fiche et ses pronostics sont alors verrouillés. Les autres vins restent ouverts, et d’autres bouteilles peuvent encore être ajoutées.
+          {done.length} vin{done.length > 1 ? 's' : ''} révélé
+          {done.length > 1 ? 's' : ''} sur {numbered.length}. Révélez chaque vin quand tout le monde l’a goûté : il s’affiche sur tous les téléphones après un compte à rebours,
+          avec les points de chacun et le classement provisoire. Sa fiche et ses pronostics sont alors verrouillés. Les autres vins restent ouverts, et d’autres bouteilles peuvent
+          encore être ajoutées.
         </p>
         {target ? (
           <div className="stack">
             <Notice kind="info">
-              Révéler le vin n°{target.number} ? {stats(target).pronos} pronostic{stats(target).pronos > 1 ? 's' : ''} enregistré{stats(target).pronos > 1 ? 's' : ''} sur {participants.length} participants (dont {stats(target).complets} complet{stats(target).complets > 1 ? 's' : ''}), et {stats(target).fiches} note{stats(target).fiches > 1 ? 's' : ''} sur 20 (facultatives). Ensuite, plus personne ne pourra modifier sa fiche ni son pronostic sur ce vin.
+              Révéler le vin n°{target.number} ? {stats(target).pronos} pronostic{stats(target).pronos > 1 ? 's' : ''} enregistré
+              {stats(target).pronos > 1 ? 's' : ''} sur {participants.length} participants (dont {stats(target).complets} complet
+              {stats(target).complets > 1 ? 's' : ''}), et {stats(target).fiches} note{stats(target).fiches > 1 ? 's' : ''} sur 20 (facultatives). Ensuite, plus personne ne pourra
+              modifier sa fiche ni son pronostic sur ce vin.
             </Notice>
-            <button className="btn danger block" disabled={busy} onClick={async () => (await act('revealNumber', { number: target.number }, `Vin n°${target.number} révélé.`)) && setArmed(null)}>
+            <button
+              className="btn danger block"
+              disabled={busy}
+              onClick={async () => (await act('revealNumber', { number: target.number }, `Vin n°${target.number} révélé.`)) && setArmed(null)}
+            >
               Oui, révéler le vin n°{target.number}
             </button>
             <button className="btn ghost block" onClick={() => setArmed(null)}>
@@ -820,10 +878,14 @@ function TabReveal({ data, act, busy, code }) {
                 </button>
               ))}
             </div>
-            <p className="tiny muted">Le chiffre sous chaque vin : nombre de pronostics enregistrés sur le nombre de participants (le propriétaire de la bouteille ne pronostique pas pour des points).</p>
+            <p className="tiny muted">
+              Le chiffre sous chaque vin : nombre de pronostics enregistrés sur le nombre de participants (le propriétaire de la bouteille ne pronostique pas pour des points).
+            </p>
           </>
         ) : (
-          <p className="small muted">{notServed.length ? 'Servez un vin (onglet Soirée) pour pouvoir le révéler.' : allDone ? 'Tous les vins servis sont révélés.' : 'Aucun vin servi pour l’instant.'}</p>
+          <p className="small muted">
+            {notServed.length ? 'Servez un vin (onglet Soirée) pour pouvoir le révéler.' : allDone ? 'Tous les vins servis sont révélés.' : 'Aucun vin servi pour l’instant.'}
+          </p>
         )}
         <Link className="small center" href={`/t/${code}/resultats`}>
           Ouvrir l’écran de révélation (à projeter sur une télévision)
@@ -865,7 +927,8 @@ function TabReveal({ data, act, busy, code }) {
           )
         ) : (
           <p className="small muted">
-            Quand tous les vins seront révélés ({numbered.length - done.length} restant{numbered.length - done.length > 1 ? 's' : ''}), vous pourrez afficher les classements définitifs et le podium.
+            Quand tous les vins seront révélés ({numbered.length - done.length} restant{numbered.length - done.length > 1 ? 's' : ''}), vous pourrez afficher les classements
+            définitifs et le podium.
           </p>
         )}
       </div>
@@ -874,45 +937,98 @@ function TabReveal({ data, act, busy, code }) {
 }
 
 // ---------------------------------------------------------------
-function DeleteTasting({ code, name }) {
-  const [armed, setArmed] = useState(false);
-  const [typed, setTyped] = useState('');
+// Modifier le nom ou la date de la soirée, ou l'effacer (avec confirmation).
+function GererSoiree({ code, tasting, act, busy }) {
+  const [mode, setMode] = useState(null); // null | 'modifier' | 'effacer'
+  const [name, setName] = useState(tasting.name);
+  const [date, setDate] = useState(tasting.event_date || '');
   const [error, setError] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   return (
-    <details className="panel">
-      <summary>Supprimer cette soirée</summary>
-      <div className="stack" style={{ marginTop: 12 }}>
-        <p className="small muted">
-          Pour effacer une soirée de test, par exemple. Tout est supprimé définitivement : participants, bouteilles, fiches, pronostics et résultats. Elle disparaît aussi des archives et du palmarès.
-        </p>
-        {!armed ? (
-          <button className="btn ghost" onClick={() => setArmed(true)}>
-            Je veux supprimer cette soirée
+    <div className="panel stack">
+      <h2>Gérer la soirée</h2>
+      {mode === null && (
+        <div className="row">
+          <button
+            className="btn ghost"
+            onClick={() => {
+              setName(tasting.name);
+              setDate(tasting.event_date || '');
+              setMode('modifier');
+            }}
+          >
+            Modifier le nom ou la date
           </button>
-        ) : (
-          <>
-            <label className="field">
-              <span>Recopiez le nom de la soirée pour confirmer : {name}</span>
-              <input className="input" value={typed} onChange={(e) => setTyped(e.target.value)} aria-label="Nom de la soirée à supprimer" />
-            </label>
-            <Notice kind="error">{error}</Notice>
+          <button className="btn ghost danger-txt" onClick={() => setMode('effacer')}>
+            Effacer la soirée
+          </button>
+        </div>
+      )}
+      {mode === 'modifier' && (
+        <form
+          className="stack"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (await act('edit', { name, date }, 'Soirée modifiée.')) setMode(null);
+          }}
+        >
+          <label className="field">
+            <span>Nom de la soirée</span>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required />
+          </label>
+          <label className="field">
+            <span>Date (facultatif)</span>
+            <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+          <p className="tiny muted">Le code {code} ne change pas : les invités gardent celui qu’ils ont reçu.</p>
+          <div className="row">
+            <button className="btn" disabled={busy || !name.trim()}>
+              Enregistrer
+            </button>
+            <button type="button" className="btn ghost" onClick={() => setMode(null)}>
+              Annuler
+            </button>
+          </div>
+        </form>
+      )}
+      {mode === 'effacer' && (
+        <div className="orga-effacer stack" role="alertdialog" aria-label="Effacer la soirée">
+          <p className="small">
+            <strong>Effacer « {tasting.name} » ?</strong> Participants, bouteilles, fiches, pronostics et résultats sont supprimés définitivement. Les participants n’auront plus
+            accès à la soirée, même avec le code {code}.{tasting.phase === 'revelee' ? ' Elle disparaîtra aussi des archives et du palmarès.' : ''}
+          </p>
+          <Notice kind="error">{error}</Notice>
+          <div className="row">
             <button
               className="btn danger"
-              disabled={typed.trim() !== name}
+              disabled={deleting}
               onClick={async () => {
+                setDeleting(true);
+                setError(null);
                 try {
-                  await api(`/api/admin/${code}`, { method: 'POST', body: { action: 'deleteTasting', confirmName: typed } });
-                  window.location.href = '/';
+                  await api(`/api/admin/${code}`, {
+                    method: 'POST',
+                    body: {
+                      action: 'deleteTasting',
+                      confirmName: tasting.name,
+                    },
+                  });
+                  forgetSoiree(code);
+                  window.location.href = '/orga';
                 } catch (e) {
                   setError(e.message);
+                  setDeleting(false);
                 }
               }}
             >
-              Supprimer définitivement
+              {deleting ? 'Effacement…' : 'Effacer définitivement'}
             </button>
-          </>
-        )}
-      </div>
-    </details>
+            <button type="button" className="btn ghost" onClick={() => setMode(null)} disabled={deleting}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

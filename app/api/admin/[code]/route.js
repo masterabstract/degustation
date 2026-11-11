@@ -220,6 +220,15 @@ export const POST = route(async (req, { code }) => {
     case 'rename':
       unwrap(await db().from('tastings').update({ name: cleanText(b.name, 80) || tasting.name }).eq('id', T));
       break;
+    case 'edit': {
+      // Modifier le nom et la date de la soirée (le code, lui, ne change jamais : les invités l'ont déjà).
+      const name = cleanText(b.name, 80);
+      if (!name) throw new HttpError(400, 'Donnez un nom à la soirée.');
+      const date = b.date === '' || b.date === null ? null : /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : undefined;
+      if (date === undefined) throw new HttpError(400, 'Date invalide.');
+      unwrap(await db().from('tastings').update({ name, event_date: date }).eq('id', T));
+      break;
+    }
 
     default:
       throw new HttpError(400, 'Action inconnue.');

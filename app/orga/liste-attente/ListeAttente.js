@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Band, Notice } from '@/components/ui';
 
 // Inscrits de la page de vente, visibles seulement avec le mot de passe organisateur.
@@ -26,6 +26,12 @@ export default function ListeAttente() {
       setBusy(false);
     }
   }
+
+  // Appareil déjà connecté avec le mot de passe organisateur : la liste s'affiche directement.
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const date = (x) => new Date(x).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 

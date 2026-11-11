@@ -8,6 +8,7 @@ import Autocomplete from './Autocomplete';
 import RegionMap from './RegionMap';
 import AromaPicker from './AromaPicker';
 import ServeAlert from './ServeAlert';
+import SoireeEffacee from './SoireeEffacee';
 import { optionsFor, fillFromAppellation, fillFromRegion, describePatch, regionOptions, appellationOptions, grapeOptions, appellationGrapes } from '@/lib/autofill';
 import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
 import { BAREME, VINTAGE_DECADES } from '@/lib/bareme';
@@ -144,7 +145,7 @@ export default function SheetPage({ code, number: routeNumber }) {
       if (document.visibilityState !== 'visible') return;
       api(`/api/t/${code}`)
         .then((d) => setState((s) => (s ? { ...s, tasting: d.tasting, bottles: d.bottles?.length ? d.bottles : s.bottles } : s)))
-        .catch(() => {});
+        .catch((e) => e.status === 404 && setLoadError(e)); // soirée effacée entre-temps
     }, 5000);
     return () => clearInterval(id);
   }, [code]);
@@ -174,6 +175,7 @@ export default function SheetPage({ code, number: routeNumber }) {
       if (dirty.current.rating || dirty.current.prediction) setSave({ status: 'pending', msg: 'Modification en cours…' });
       else setSave({ status: 'saved', msg: 'Enregistré' });
     } catch (e) {
+      if (e.status === 404) return setLoadError(e); // soirée effacée : plus rien à envoyer
       if (e.status === 403) {
         deleteDraft(code, bid); // vin révélé ou soirée verrouillée : la fiche ne partira plus
         if (!current()) markRefused(code); // le participant a quitté ce vin : il sera prévenu sur la liste
@@ -255,6 +257,7 @@ export default function SheetPage({ code, number: routeNumber }) {
     router.push(target);
   }
 
+  if (loadError?.status === 404) return <SoireeEffacee code={code} connue />;
   if (loadError) {
     return (
       <main>

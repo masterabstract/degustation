@@ -4,17 +4,21 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { recentSoirees } from '@/lib/memo';
+import { api } from '@/components/ui';
 
 export default function Accueil() {
   const router = useRouter();
   const [code, setCode] = useState('');
   const [recent, setRecent] = useState([]);
-  useEffect(() => setRecent(recentSoirees()), []);
+  const [orga, setOrga] = useState(false); // appareil connecté avec le mot de passe organisateur ?
+  useEffect(() => {
+    setRecent(recentSoirees());
+    api('/api/orga/session')
+      .then((d) => setOrga(!!d.organisateur))
+      .catch(() => {});
+  }, []);
   const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
   const mine = recent.filter((x) => x.role === 'participant').slice(0, 3);
-  const organised = recent.filter((x) => x.role === 'organisateur').slice(0, 3);
-  // Un participant n'a pas à voir l'espace organisateur en grand : un simple lien discret suffit.
-  const showOrganiser = organised.length > 0 || mine.length === 0;
 
   return (
     <main>
@@ -43,16 +47,10 @@ export default function Accueil() {
             <p className="tiny muted">Ce téléphone se souvient de vos soirées : pas besoin de retaper le code.</p>
           </div>
         )}
-        {organised.length > 0 && (
-          <div className="panel stack">
-            <h2>Reprendre l’organisation</h2>
-            {organised.map((x) => (
-              <Link key={x.code} href={`/admin/${x.code}`} className="btn ghost block resume-btn">
-                <span>{x.name || `Soirée ${x.code}`}</span>
-                <span className="resume-sub">Espace organisateur · {x.code}</span>
-              </Link>
-            ))}
-          </div>
+        {orga && (
+          <Link href="/orga" className="btn gold block">
+            Espace organisateur : mes soirées
+          </Link>
         )}
         <form
           className="panel stack"
@@ -74,7 +72,7 @@ export default function Accueil() {
               autoCorrect="off"
               spellCheck={false}
               inputMode="text"
-              placeholder="K7P4M"
+              placeholder="SYRAH42"
               aria-label="Code de la dégustation"
             />
           </label>
@@ -82,19 +80,6 @@ export default function Accueil() {
             Rejoindre
           </button>
         </form>
-
-        {showOrganiser && (
-          <div className="panel">
-            <h2>Vous organisez ?</h2>
-            <p className="muted">Créez la soirée et invitez les participants : chacun enregistre ses bouteilles en secret. Accès réservé, protégé par le mot de passe organisateur.</p>
-            <Link href="/organiser" className="btn ghost block">
-              Créer une dégustation
-            </Link>
-            <Link href="/orga" className="small" style={{ display: 'block', textAlign: 'center', marginTop: 10 }}>
-              Installer l’appli organisateur
-            </Link>
-          </div>
-        )}
 
         <Link href="/archives" className="panel" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
           <div className="row between">
@@ -118,16 +103,9 @@ export default function Accueil() {
             Cacher les bouteilles, l’ordre de service, la méthode pour deviner et le barème des points.
           </p>
         </Link>
-        {organised.length > 0 && (
+        {orga && (
           <p className="center small" style={{ marginTop: 8 }}>
             Page de vente (réservée aux organisateurs pour l’instant) : <Link href="/offre">découvrir La Confrérie du Pif</Link>
-          </p>
-        )}
-        {!showOrganiser && (
-          <p className="center tiny">
-            <Link href="/orga" className="muted">
-              Espace organisateur
-            </Link>
           </p>
         )}
       </div>

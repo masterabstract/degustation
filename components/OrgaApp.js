@@ -1,20 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { api, Notice, Spinner } from './ui';
-import { recentSoirees, rememberSoiree } from '@/lib/memo';
+import { api, Notice, Spinner, fmtDate } from './ui';
+import { forgetSoiree } from '@/lib/memo';
 
-// Appli de l'organisateur (installée sur l'écran d'accueil) : ses soirées, la création
-// d'une soirée, et la connexion avec le lien organisateur.
+// Appli de l'organisateur (installable sur l'écran d'accueil) : toutes les soirées,
+// classées par étape, avec pour chacune Ouvrir, Modifier et Effacer.
+// Cette page n'est envoyée qu'à un appareil connecté avec le mot de passe organisateur.
 const PHASE = {
   preparation: 'En préparation',
   degustation: 'Dégustation en cours',
   revelation: 'Révélation en cours',
   revelee: 'Terminée',
 };
-const PHASE_COURT = { preparation: 'Prépa', degustation: 'En cours', revelation: 'Révélation', revelee: 'Terminée' };
+const GROUPES = [
+  ['encours', 'En cours', (s) => s.phase === 'degustation' || s.phase === 'revelation'],
+  ['prepa', 'En préparation', (s) => s.phase === 'preparation'],
+  ['finies', 'Terminées', (s) => s.phase === 'revelee'],
+];
+const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
 function useStandalone() {
   const [standalone, setStandalone] = useState(false);
@@ -28,18 +33,11 @@ function useStandalone() {
   return standalone;
 }
 
-export default function OrgaApp() {
-  const router = useRouter();
+function Installer() {
   const standalone = useStandalone();
-  const [soirees, setSoirees] = useState(null);
-  const [status, setStatus] = useState({}); // code -> { ok, phase, name, participants, bottles }
   const [installEvt, setInstallEvt] = useState(null);
   const [installed, setInstalled] = useState(false);
   const [platform, setPlatform] = useState('autre');
-  const [link, setLink] = useState('');
-  const [linkError, setLinkError] = useState(null);
-  const [busy, setBusy] = useState(false);
-
   useEffect(() => {
     const ua = navigator.userAgent || '';
     setPlatform(/iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1) ? 'ios' : /android/i.test(ua) ? 'android' : 'autre');
@@ -58,158 +56,315 @@ export default function OrgaApp() {
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
+  if (standalone) return null;
+  if (installed) return <Notice kind="ok">Appli installée : ouvrez « Confrérie Orga » depuis l’écran d’accueil.</Notice>;
+  return (
+    <details className="panel install-card">
+      <summary>Installer l’appli sur ce téléphone</summary>
+      <div className="stack" style={{ marginTop: 10 }}>
+        <p className="small muted">Elle s’ouvre en plein écran depuis l’icône « Confrérie Orga », directement sur vos soirées.</p>
+        {installEvt ? (
+          <button
+            className="btn gold block"
+            onClick={async () => {
+              installEvt.prompt();
+              const r = await installEvt.userChoice.catch(() => null);
+              if (r?.outcome === 'accepted') setInstalled(true);
+              setInstallEvt(null);
+            }}
+          >
+            Installer l’appli
+          </button>
+        ) : platform === 'ios' ? (
+          <ol className="install-steps">
+            <li>
+              Ouvrez cette page dans <strong>Safari</strong>.
+            </li>
+            <li>
+              Touchez le bouton <strong>Partager</strong> (le carré avec une flèche vers le haut).
+            </li>
+            <li>
+              Choisissez <strong>Sur l’écran d’accueil</strong>, puis <strong>Ajouter</strong>.
+            </li>
+            <li>Ouvrez l’appli « Confrérie Orga » et tapez une fois le mot de passe organisateur (l’iPhone sépare l’appli de Safari).</li>
+          </ol>
+        ) : platform === 'android' ? (
+          <ol className="install-steps">
+            <li>
+              Dans <strong>Chrome</strong>, touchez le menu <strong>⋮</strong> en haut à droite.
+            </li>
+            <li>
+              Choisissez <strong>Installer l’application</strong> (ou <strong>Ajouter à l’écran d’accueil</strong>).
+            </li>
+          </ol>
+        ) : (
+          <p className="small">Ouvrez cette page sur votre téléphone pour installer l’appli.</p>
+        )}
+      </div>
+    </details>
+  );
+}
 
-  // Soirées organisées sur ce téléphone, avec leur état en direct.
-  useEffect(() => {
-    const list = recentSoirees().filter((x) => x.role === 'organisateur');
-    setSoirees(list);
-    let alive = true;
-    const load = () =>
-      list.forEach((x) =>
-        api(`/api/admin/${x.code}`)
-          .then((d) => alive && setStatus((s) => ({ ...s, [x.code]: { ok: true, phase: d.tasting.phase, name: d.tasting.name, participants: d.participants?.length || 0, bottles: d.bottles?.length || 0 } })))
-          .catch((e) => alive && setStatus((s) => ({ ...s, [x.code]: { ok: false, gone: e.status === 404, relog: e.status === 401 } })))
-      );
-    load();
-    const id = setInterval(() => document.visibilityState === 'visible' && load(), 15000);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
+function Modifier({ s, onDone, onCancel }) {
+  const [name, setName] = useState(s.name);
+  const [date, setDate] = useState(s.event_date || '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  return (
+    <form
+      className="orga-edit stack"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setError(null);
+        try {
+          await api(`/api/admin/${s.code}`, {
+            method: 'POST',
+            body: { action: 'edit', name, date },
+          });
+          onDone('Soirée modifiée.');
+        } catch (err) {
+          setError(err.message);
+          setBusy(false);
+        }
+      }}
+    >
+      <label className="field">
+        <span>Nom de la soirée</span>
+        <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required autoFocus />
+      </label>
+      <label className="field">
+        <span>Date (facultatif)</span>
+        <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      </label>
+      <p className="tiny muted">Le code {s.code} ne change pas : les invités peuvent garder celui qu’ils ont reçu.</p>
+      <Notice kind="error">{error}</Notice>
+      <div className="row">
+        <button className="btn sm" disabled={busy || !name.trim()}>
+          {busy ? 'Enregistrement…' : 'Enregistrer'}
+        </button>
+        <button type="button" className="btn sm ghost" onClick={onCancel}>
+          Annuler
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function Effacer({ s, onDone, onCancel }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  return (
+    <div className="orga-effacer stack" role="alertdialog" aria-label={`Effacer ${s.name}`}>
+      <p className="small">
+        <strong>Effacer « {s.name} » ?</strong> Participants, bouteilles, fiches, pronostics et résultats sont supprimés définitivement. Les participants n’auront plus accès à la
+        soirée, même avec le code {s.code}.{s.phase === 'revelee' ? ' Elle disparaîtra aussi des archives et du palmarès.' : ''}
+      </p>
+      <Notice kind="error">{error}</Notice>
+      <div className="row">
+        <button
+          className="btn sm danger"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              await api(`/api/admin/${s.code}`, {
+                method: 'POST',
+                body: { action: 'deleteTasting', confirmName: s.name },
+              });
+              forgetSoiree(s.code);
+              onDone(`« ${s.name} » a été effacée.`);
+            } catch (err) {
+              setError(err.message);
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? 'Effacement…' : 'Effacer définitivement'}
+        </button>
+        <button type="button" className="btn sm ghost" onClick={onCancel} disabled={busy}>
+          Annuler
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Carte({ s, mode, setMode, onChanged }) {
+  const ouvert = mode?.code === s.code ? mode.kind : null;
+  const fermer = () => setMode(null);
+  const fini = (msg) => {
+    setMode(null);
+    onChanged(msg);
+  };
+  return (
+    <li className={`orga-carte${ouvert === 'effacer' ? ' danger' : ''}`}>
+      <Link href={`/admin/${s.code}`} className="orga-soiree">
+        <span className="orga-soiree-main">
+          <strong>{s.name}</strong>
+          <span className="tiny muted">
+            {s.event_date ? `${fmtDate(s.event_date)} · ` : ''}
+            {pluriel(s.participants, 'participant')} · {pluriel(s.bottles, 'bouteille')}
+          </span>
+        </span>
+        <span className="orga-code" aria-label={`Code ${s.code}`}>
+          {s.code}
+        </span>
+        <span aria-hidden="true">›</span>
+      </Link>
+      <div className="orga-actions">
+        <span className={`pill ${s.phase === 'degustation' || s.phase === 'revelation' ? 'gold' : s.phase === 'revelee' ? 'green' : ''}`}>{PHASE[s.phase] || s.phase}</span>
+        <button
+          type="button"
+          className="linklike small"
+          aria-expanded={ouvert === 'modifier'}
+          onClick={() => setMode(ouvert === 'modifier' ? null : { code: s.code, kind: 'modifier' })}
+        >
+          Modifier
+        </button>
+        <button
+          type="button"
+          className="linklike small orga-del"
+          aria-expanded={ouvert === 'effacer'}
+          onClick={() => setMode(ouvert === 'effacer' ? null : { code: s.code, kind: 'effacer' })}
+        >
+          Effacer
+        </button>
+      </div>
+      {ouvert === 'modifier' && <Modifier s={s} onDone={fini} onCancel={fermer} />}
+      {ouvert === 'effacer' && <Effacer s={s} onDone={fini} onCancel={fermer} />}
+    </li>
+  );
+}
+
+export default function OrgaApp() {
+  const [soirees, setSoirees] = useState(null);
+  const [error, setError] = useState(null);
+  const [flash, setFlash] = useState(null);
+  const [mode, setMode] = useState(null); // { code, kind: 'modifier' | 'effacer' }
+  const [voirTout, setVoirTout] = useState({}); // groupe -> tout afficher
+  const [cherche, setCherche] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const d = await api('/api/orga/soirees');
+      setSoirees(d.soirees);
+      setError(null);
+    } catch (e) {
+      if (e.status === 401)
+        window.location.reload(); // session expirée : retour à l'écran du mot de passe
+      else setError(e.message || 'Pas de réseau.');
+    }
   }, []);
 
-  async function openLink(e) {
-    e.preventDefault();
-    setLinkError(null);
-    const m = String(link).match(/admin\/([A-Za-z0-9]{5})\?cle=([^&\s#]+)/);
-    if (!m) return setLinkError('Ce n’est pas un lien organisateur. Il ressemble à : …/admin/ABCDE?cle=…');
-    const code = m[1].toUpperCase();
-    setBusy(true);
-    try {
-      await api(`/api/admin/${code}/login`, { method: 'POST', body: { key: decodeURIComponent(m[2]) } });
-      const d = await api(`/api/admin/${code}`);
-      rememberSoiree({ code, name: d.tasting.name, role: 'organisateur' });
-      router.push(`/admin/${code}`);
-    } catch (err) {
-      setLinkError(err.status === 404 ? 'Cette soirée n’existe pas (ou a été effacée).' : err.message);
-      setBusy(false);
-    }
-  }
+  useEffect(() => {
+    load();
+    const id = setInterval(() => document.visibilityState === 'visible' && load(), 15000);
+    const onVis = () => document.visibilityState === 'visible' && load();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [load]);
 
-  const showInstall = !standalone && !installed;
+  const changed = (msg) => {
+    setFlash(msg);
+    setTimeout(() => setFlash(null), 3000);
+    load();
+  };
 
   return (
     <main className="orga">
       <section className="orga-hero">
-        <img src="/logo.webp" alt="La Confrérie du Pif" width={500} height={500} className="orga-logo" />
+        <img src="/logo.webp" alt="La Confrérie du Pif" width={500} height={500} className="orga-logo petit" />
         <p className="orga-eyebrow">Appli de l’organisateur</p>
-        <h1>Espace organisateur</h1>
+        <h1>Mes soirées</h1>
       </section>
 
       <div className="page stack">
-        {showInstall && (
-          <div className="panel stack install-card">
-            <h2>Installer l’appli sur ce téléphone</h2>
-            <p className="small muted">Elle s’ouvre en plein écran depuis l’icône « Confrérie Orga », directement sur vos soirées. Réservée à l’organisateur : les invités, eux, utilisent simplement le lien de la soirée.</p>
-            {installEvt ? (
-              <button
-                className="btn gold block"
-                onClick={async () => {
-                  installEvt.prompt();
-                  const r = await installEvt.userChoice.catch(() => null);
-                  if (r?.outcome === 'accepted') setInstalled(true);
-                  setInstallEvt(null);
-                }}
-              >
-                Installer l’appli
-              </button>
-            ) : platform === 'ios' ? (
-              <ol className="install-steps">
-                <li>
-                  Ouvrez cette page dans <strong>Safari</strong>.
-                </li>
-                <li>
-                  Touchez le bouton <strong>Partager</strong> (le carré avec une flèche vers le haut).
-                </li>
-                <li>
-                  Choisissez <strong>Sur l’écran d’accueil</strong>, puis <strong>Ajouter</strong>.
-                </li>
-                <li>Ouvrez l’appli « Confrérie Orga » et collez votre lien organisateur ci-dessous (l’iPhone sépare l’appli de Safari : il faut s’y reconnecter une fois).</li>
-              </ol>
-            ) : platform === 'android' ? (
-              <ol className="install-steps">
-                <li>
-                  Dans <strong>Chrome</strong>, touchez le menu <strong>⋮</strong> en haut à droite.
-                </li>
-                <li>
-                  Choisissez <strong>Installer l’application</strong> (ou <strong>Ajouter à l’écran d’accueil</strong>).
-                </li>
-              </ol>
-            ) : (
-              <p className="small">Ouvrez cette page sur votre téléphone pour installer l’appli.</p>
-            )}
+        <Link href="/organiser" className="btn gold block">
+          + Créer une soirée
+        </Link>
+        <Notice kind="ok">{flash}</Notice>
+        <Notice kind="error">{error}</Notice>
+
+        {soirees === null ? (
+          !error && (
+            <div className="center">
+              <Spinner />
+            </div>
+          )
+        ) : soirees.length === 0 ? (
+          <div className="panel">
+            <p className="small muted" style={{ margin: 0 }}>
+              Aucune soirée pour l’instant. Créez la première : un code sur le thème du vin lui sera attribué, à donner aux participants.
+            </p>
           </div>
+        ) : (
+          <>
+            {soirees.length > 6 && (
+              <input
+                className="input"
+                type="search"
+                value={cherche}
+                onChange={(e) => setCherche(e.target.value)}
+                placeholder="Chercher une soirée (nom ou code)"
+                aria-label="Chercher une soirée"
+              />
+            )}
+            {GROUPES.map(([id, titre, test]) => {
+              const q = cherche.trim().toLowerCase();
+              const liste = soirees.filter(test).filter((s) => !q || s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q));
+              if (!liste.length) return null;
+              const MAX = 5;
+              const replie = !q && !voirTout[id] && liste.length > MAX;
+              const visibles = replie ? liste.slice(0, MAX) : liste;
+              return (
+                <section key={id} className="panel stack" aria-labelledby={`g-${id}`}>
+                  <h2 id={`g-${id}`}>
+                    {titre} <span className="muted small">({liste.length})</span>
+                  </h2>
+                  <ul className="orga-list">
+                    {visibles.map((s) => (
+                      <Carte key={s.code} s={s} mode={mode} setMode={setMode} onChanged={changed} />
+                    ))}
+                  </ul>
+                  {replie && (
+                    <button type="button" className="btn ghost sm" onClick={() => setVoirTout((v) => ({ ...v, [id]: true }))}>
+                      Voir les {liste.length - MAX} autres
+                    </button>
+                  )}
+                </section>
+              );
+            })}
+            {cherche.trim() && !soirees.some((s) => s.name.toLowerCase().includes(cherche.trim().toLowerCase()) || s.code.toLowerCase().includes(cherche.trim().toLowerCase())) && (
+              <p className="small muted center">Aucune soirée ne correspond.</p>
+            )}
+          </>
         )}
-        {installed && !standalone && <Notice kind="ok">Appli installée : ouvrez « Confrérie Orga » depuis l’écran d’accueil.</Notice>}
 
-        <div className="panel stack">
-          <h2>Mes soirées</h2>
-          {soirees === null ? (
-            <Spinner />
-          ) : soirees.length === 0 ? (
-            <p className="small muted">Aucune soirée sur ce téléphone pour l’instant. Créez-en une, ou ouvrez votre lien organisateur ci-dessous.</p>
-          ) : (
-            <ul className="orga-list">
-              {soirees.map((x) => {
-                const st = status[x.code];
-                return (
-                  <li key={x.code}>
-                    <Link href={`/admin/${x.code}`} className="orga-soiree">
-                      <span className="orga-soiree-main">
-                        <strong>{st?.name || x.name || `Soirée ${x.code}`}</strong>
-                        <span className="tiny muted">
-                          Code {x.code}
-                          {st?.ok ? ` · ${PHASE[st.phase] || st.phase} · ${st.participants} participant${st.participants > 1 ? 's' : ''} · ${st.bottles} bouteille${st.bottles > 1 ? 's' : ''}` : ''}
-                        </span>
-                        {st && !st.ok && <span className="tiny" style={{ color: 'var(--erreur)' }}>{st.gone ? 'Soirée introuvable (effacée ?)' : st.relog ? 'Reconnexion nécessaire : collez le lien organisateur' : 'Pas de réseau'}</span>}
-                      </span>
-                      {st?.ok && <span className={`pill ${st.phase === 'degustation' ? 'gold' : ''}`}>{PHASE_COURT[st.phase] || st.phase}</span>}
-                      <span aria-hidden="true">›</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <Link href="/organiser" className="btn block">
-            Créer une nouvelle soirée
-          </Link>
-        </div>
+        <Installer />
 
-        <form className="panel stack" onSubmit={openLink}>
-          <h2>Ouvrir avec mon lien organisateur</h2>
-          <p className="small muted">Le lien secret reçu à la création de la soirée (aussi disponible dans l’onglet Soirée de l’espace organisateur, sur un appareil déjà connecté).</p>
-          <input className="input" value={link} onChange={(e) => setLink(e.target.value)} placeholder="Collez le lien ici" aria-label="Lien organisateur" autoComplete="off" />
-          <Notice kind="error">{linkError}</Notice>
-          <button className="btn ghost block" disabled={busy || !link.trim()}>
-            {busy ? 'Connexion…' : 'Ouvrir la soirée'}
+        <nav className="orga-liens" aria-label="Autres pages">
+          <Link href="/archives">Archives et palmarès</Link>
+          <Link href="/orga/liste-attente">Liste d’attente</Link>
+          <Link href="/offre">Page de vente</Link>
+          <Link href="/">Site des participants</Link>
+          <button
+            type="button"
+            className="linklike muted"
+            onClick={async () => {
+              try {
+                await api('/api/orga/session', { method: 'DELETE' });
+              } catch {}
+              window.location.reload();
+            }}
+          >
+            Se déconnecter de ce téléphone
           </button>
-        </form>
-
-        <div className="row" style={{ justifyContent: 'center', gap: 18 }}>
-          <Link href="/archives" className="small">
-            Archives et palmarès
-          </Link>
-          <Link href="/orga/liste-attente" className="small">
-            Liste d’attente
-          </Link>
-          <Link href="/offre" className="small">
-            Page de vente
-          </Link>
-          <Link href="/" className="small muted">
-            Site des participants
-          </Link>
-        </div>
+        </nav>
       </div>
     </main>
   );
