@@ -22,7 +22,7 @@ create extension if not exists pgcrypto;
 -- 1. DÉGUSTATIONS ------------------------------------------------------
 create table if not exists public.tastings (
   id               uuid primary key default gen_random_uuid(),
-  code             text not null unique,            -- code d'accès partagé (ex : K7P4M)
+  code             text not null unique,            -- code d'accès partagé (ex : SAVAGNIN)
   name             text not null,                   -- nom de la soirée
   event_date       date,
   phase            text not null default 'preparation'
