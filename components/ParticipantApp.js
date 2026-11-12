@@ -56,7 +56,7 @@ export default function ParticipantApp({ code }) {
         {error && <Notice kind="error">Connexion instable, nouvelle tentative automatique…</Notice>}
         <DraftSync code={code} />
         {tasting.phase === 'preparation' && <Waiting name={me.name} />}
-        <MyBottles data={data} code={code} onChange={(myBottles) => setData((d) => ({ ...d, myBottles }))} />
+        {tasting.phase === 'preparation' && <MyBottles data={data} code={code} onChange={(myBottles) => setData((d) => ({ ...d, myBottles }))} />}
         {tasting.phase === 'revelation' && (
           <div className="panel stack center reveal-in">
             <h2>La révélation a commencé</h2>
@@ -87,6 +87,8 @@ export default function ParticipantApp({ code }) {
           </div>
         )}
         {tasting.phase !== 'preparation' && <WineList data={data} code={code} />}
+        {/* Pendant la soirée, ses propres bouteilles passent sous les vins à pronostiquer, contenu masqué. */}
+        {tasting.phase !== 'preparation' && <MyBottles data={data} code={code} onChange={(myBottles) => setData((d) => ({ ...d, myBottles }))} />}
         {tasting.phase === 'degustation' && <Rules />}
         <p className="center tiny muted">
           Ce téléphone est lié à {me.name}. Pour changer de téléphone, demandez à l’organisateur de libérer votre prénom.
@@ -387,6 +389,20 @@ function MyBottles({ data, code, onChange }) {
   const [error, setError] = useState(null);
   const prep = tasting.phase === 'preparation';
   const open = tasting.phase === 'preparation' || tasting.phase === 'degustation'; // ajout possible jusqu'à la révélation
+  // Dès le début de la dégustation, le contenu de ses bouteilles est masqué à l'écran : les voisins de table
+  // ne voient rien. Un geste l'affiche, et il se masque de lui-même au bout de 15 secondes.
+  const masquer = tasting.phase === 'degustation';
+  const [visible, setVisible] = useState(null); // id de la bouteille affichée
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(() => setVisible(null), 15000);
+    const cacher = () => document.visibilityState !== 'visible' && setVisible(null);
+    document.addEventListener('visibilitychange', cacher);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('visibilitychange', cacher);
+    };
+  }, [visible]);
 
   async function send(payload) {
     setBusy(true);
@@ -410,7 +426,9 @@ function MyBottles({ data, code, onChange }) {
       <h2>Mes bouteilles</h2>
       {open && (
         <p className="small muted">
-          Vous seul voyez ces informations. Ni l’organisateur ni les autres participants n’y ont accès avant la révélation.
+          {masquer
+            ? 'Contenu masqué pour que vos voisins ne voient rien. Touchez « Afficher » pour le voir : il se masque tout seul au bout de 15 secondes.'
+            : 'Vous seul voyez ces informations. Ni l’organisateur ni les autres participants n’y ont accès avant la révélation.'}
         </p>
       )}
       {myBottles.map((b) =>
@@ -422,6 +440,24 @@ function MyBottles({ data, code, onChange }) {
               onCancel={() => setEditing(null)}
               onSave={async (x) => (await send({ action: 'update', id: b.id, bottle: x })) && setEditing(null)}
             />
+          </div>
+        ) : masquer && visible !== b.id ? (
+          <div key={b.id} className="row mb-masque" style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
+            <Capsule n={b.number} size="sm" />
+            <div className="grow">
+              <div style={{ fontWeight: 700 }}>{b.number ? `Ma bouteille n°${b.number}` : 'Ma bouteille'}</div>
+              <div className="small muted" aria-hidden="true">
+                ••••••• ••••• ••••
+              </div>
+              {b.number && (
+                <div className="small" style={{ color: 'var(--or-fonce)', fontWeight: 600 }}>
+                  Masquez la bouteille et écrivez dessus : n°{b.number}
+                </div>
+              )}
+            </div>
+            <button className="btn ghost sm" onClick={() => setVisible(b.id)}>
+              Afficher
+            </button>
           </div>
         ) : (
           <div key={b.id} className="row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
@@ -441,7 +477,18 @@ function MyBottles({ data, code, onChange }) {
             </div>
             {open && (
               <div className="actions">
-                <button className="btn ghost sm" onClick={() => setEditing(b.id)}>
+                {masquer && (
+                  <button className="btn ghost sm" onClick={() => setVisible(null)}>
+                    Masquer
+                  </button>
+                )}
+                <button
+                  className="btn ghost sm"
+                  onClick={() => {
+                    setVisible(null);
+                    setEditing(b.id);
+                  }}
+                >
                   Modifier
                 </button>
                 <button className="btn ghost sm" disabled={busy} onClick={() => confirm('Retirer cette bouteille ?') && send({ action: 'delete', id: b.id })}>
