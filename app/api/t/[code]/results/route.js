@@ -40,7 +40,7 @@ export const GET = route(async (_req, { code }) => {
     // (le rang d'un vin parmi tous les vins n'est pas envoyé : il trahirait les vins non révélés)
     const shown = order.map((n) => results.wines.find((w) => w.number === n)).filter(Boolean).map(({ rank, ...w }) => w);
     const revealedBottles = bottles.filter((b) => order.includes(b.number));
-    const partial = scoreTasters({ participants, bottles: revealedBottles, predictions: predictions.filter((p) => revealedBottles.some((b) => b.id === p.bottle_id)) });
+    const partial = scoreTasters({ participants, bottles: revealedBottles, predictions: predictions.filter((p) => revealedBottles.some((b) => b.id === p.bottle_id)), regles: tasting.regles ?? 1 });
     const scoresFor = (bottleId) =>
       partial
         .map((t) => {
@@ -63,5 +63,7 @@ export const GET = route(async (_req, { code }) => {
     tasting: { code: tasting.code, name: tasting.name, event_date: tasting.event_date, revealed_at: tasting.revealed_at, phase: tasting.phase },
     me: me ? { id: me.id, name: me.name } : null,
     ...results,
+    // Corrections faites par l'organisateur après la révélation (avec leur effet sur le classement).
+    corrections: Array.isArray(tasting.corrections) ? tasting.corrections : [],
   });
 });

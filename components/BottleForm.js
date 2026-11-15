@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Autocomplete from './Autocomplete';
 import { optionsFor, fillFromAppellation, fillFromRegion, describePatch } from '@/lib/autofill';
 import { api, Chips, Notice, Spinner } from './ui';
 import { COLORS, COUNTRIES } from '@/lib/constants';
+import { controleBouteille } from '@/lib/controle';
 
 const EMPTY = { producer: '', appellation: '', grape_mix: [{ name: '', pct: '' }], region: '', subregion: '', zone: '', country: 'France', color: null, wine_name: '', vintage: '', non_vintage: false, notes: '' };
 
@@ -43,6 +44,43 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
   const fileRef = useRef(null);
   const set = (k) => (v) => setB((x) => ({ ...x, [k]: v?.target ? v.target.value : v }));
   const opts = optionsFor(b.country); // listes du pays choisi
+  // Contrôle automatique de la fiche, en direct (appellation inconnue, faute de frappe, région…).
+  const alertes = useMemo(() => controleBouteille({ ...b, grape_mix: b.grape_mix.filter((g) => g.name.trim()) }), [b]);
+  const [confirme, setConfirme] = useState(false);
+  const alertesDe = (champ) => alertes.filter((a) => a.champ === champ);
+  const Alertes = ({ champ }) =>
+    alertesDe(champ).map((a, i) => (
+      <div key={i} className="fiche-alerte" role="status">
+        <span>{a.message}</span>
+        <span className="fiche-alerte-actions">
+          {a.suggestion && (
+            <button
+              type="button"
+              className="btn sm ghost"
+              onClick={() => {
+                setConfirme(false);
+                if (champ === 'grapes') setB((x) => ({ ...x, grape_mix: x.grape_mix.map((g) => (g.name === a.remplacer ? { ...g, name: a.suggestion } : g)) }));
+                else setB((x) => ({ ...x, [champ]: a.suggestion }));
+              }}
+            >
+              Utiliser « {a.suggestion} »
+            </button>
+          )}
+          {champ === 'appellation' && a.cuvee && (
+            <button
+              type="button"
+              className="btn sm ghost"
+              onClick={() => {
+                setConfirme(false);
+                setB((x) => ({ ...x, wine_name: x.wine_name?.trim() ? x.wine_name : x.appellation, appellation: '' }));
+              }}
+            >
+              C’est le nom de la cuvée
+            </button>
+          )}
+        </span>
+      </div>
+    ));
 
   async function onPhoto(e) {
     const file = e.target.files?.[0];
@@ -65,7 +103,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
       className="stack"
       onSubmit={(e) => {
         e.preventDefault();
-        onSave(b);
+        onSave({ ...b, fiche_ok: alertes.length > 0 && confirme });
       }}
     >
       {scanUrl && (
@@ -126,11 +164,13 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
           aria-label="Appellation"
         />
         {autoNote && <div className="autofill-note">{autoNote}</div>}
+        <Alertes champ="appellation" />
         <span className="tiny muted" style={{ fontWeight: 400 }}>
           Vin sans appellation (vin nature, vin de table) : choisissez {opts.generic ? `« ${opts.generic} »` : '« Vin de France » ou son équivalent'}, ou son IGP.
         </span>
       </div>
       <GrapeRows rows={b.grape_mix} options={opts.grapes} onChange={(grape_mix) => setB((x) => ({ ...x, grape_mix }))} />
+      <Alertes champ="grapes" />
       <div className="field">
         <span>Région viticole *</span>
         <Autocomplete
@@ -146,6 +186,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
           maxLength={80}
           aria-label="Région"
         />
+        <Alertes champ="region" />
       </div>
       <div className="field">
         <span className="chip-group-label" style={{ fontWeight: 600, color: 'var(--encre)', fontSize: '0.9rem' }}>
@@ -177,6 +218,7 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
             Non millésimé
           </button>
         </div>
+        <Alertes champ="vintage" />
       </div>
       <label className="field">
         <span>Petit mot pour la révélation</span>
@@ -194,8 +236,17 @@ export default function BottleForm({ initial, onSave, onCancel, busy, scanUrl })
         ].filter(Boolean);
         return manque.length ? <p className="tiny" style={{ margin: 0, color: 'var(--erreur)' }}>Pour enregistrer, il manque : {manque.join(', ')}.</p> : null;
       })()}
+      {alertes.length > 0 && (
+        <label className="fiche-confirme">
+          <input type="checkbox" checked={confirme} onChange={(e) => setConfirme(e.target.checked)} />
+          <span>
+            {alertes.length === 1 ? 'Un point est à vérifier' : `${alertes.length} points sont à vérifier`} (en orange ci-dessus). Corrigez-les, ou cochez ici si votre fiche est juste telle quelle : ces informations
+            servent à compter les points de tous.
+          </span>
+        </label>
+      )}
       <div className="row">
-        <button className="btn" disabled={busy || !b.producer.trim() || !b.country || !b.appellation.trim() || !b.region.trim() || !rowsText(b.grape_mix) || (!b.non_vintage && !String(b.vintage).trim())}>
+        <button className="btn" disabled={busy || (alertes.length > 0 && !confirme) || !b.producer.trim() || !b.country || !b.appellation.trim() || !b.region.trim() || !rowsText(b.grape_mix) || (!b.non_vintage && !String(b.vintage).trim())}>
           {initial?.id ? 'Enregistrer les modifications' : 'Enregistrer la bouteille'}
         </button>
         {onCancel && (

@@ -62,7 +62,7 @@ export default function Archives() {
 
   return (
     <main>
-      <Band title="Archives de la Confrérie" sub="Toutes les soirées révélées et le palmarès des dégustateurs" back="/" />
+      <Band title="Archives de la Confrérie" sub="Toutes les soirées révélées et le championnat des dégustateurs" back="/" />
       <div className="page">
         <div className="sticky-tabs">
           <nav className="tabs" role="tablist">
@@ -70,7 +70,7 @@ export default function Archives() {
               Soirées ({data.soirees.length})
             </button>
             <button role="tab" aria-selected={tab === 'palmares'} onClick={() => setTab('palmares')}>
-              Palmarès
+              Championnat
             </button>
           </nav>
         </div>
@@ -174,53 +174,161 @@ export default function Archives() {
           </div>
         )}
 
-        {tab === 'palmares' && (
-          <div className="stack">
-            <p className="small muted">
-              Classement de tous les dégustateurs, toutes soirées confondues, selon leur note globale sur 20 : le pourcentage de tous les points de pronostics possibles, ramené sur 20. Les participations hors concours ne comptent pas.
-            </p>
-            <div className="panel flush">
-              {!data.palmares.length && <div className="item muted">Le palmarès se remplira après la première révélation.</div>}
-              {data.palmares.map((p, i) => (
-                <div key={p.name} className={`result ${i === 0 ? 'first' : ''}`} style={{ display: 'block' }}>
-                  <div className="row" style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
-                    <div className="rank">{p.moyenne === null ? '–' : i + 1}</div>
-                    <div className="grow">
-                      <div className="wine-name">{p.name}</div>
-                      <div className="facts">
-                        {p.soirees} soirée{p.soirees > 1 ? 's' : ''} · {p.victoires} victoire{p.victoires > 1 ? 's' : ''}
-                        {p.meilleur ? ` · record ${fmtNote(p.meilleur.note)}/20` : ''}
-                      </div>
-                    </div>
-                    <div className="score">
-                      {p.moyenne === null ? '–' : fmtNote(p.moyenne)}
-                      {p.moyenne !== null && <small>/20</small>}
-                    </div>
-                  </div>
-                  <button className="linklike small" style={{ marginTop: 8, marginLeft: 'calc(1.6em + 14px)' }} onClick={() => setOpen(open === p.name ? null : p.name)}>
-                    {open === p.name ? 'Masquer ses soirées' : 'Voir ses soirées'}
-                  </button>
-                  {open === p.name && (
-                    <div className="stack small" style={{ marginTop: 10, marginLeft: 'calc(1.6em + 14px)' }}>
-                      {p.historique.map((h) => (
-                        <Link key={h.code} href={`/t/${h.code}/resultats`} className="row between" style={{ textDecoration: 'none', color: 'inherit', flexWrap: 'nowrap' }}>
-                          <span>
-                            {h.soiree}
-                            {h.date ? <span className="muted"> · {fmtDate(h.date)}</span> : null}
-                          </span>
-                          <strong style={{ whiteSpace: 'nowrap' }}>
-                            {h.hors_concours ? 'hors concours' : `${h.rang ? `${h.rang}${h.rang === 1 ? 'er' : 'e'} · ` : ''}${fmtNote(h.note)}/20`}
-                          </strong>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {tab === 'palmares' && <Championnat data={data} open={open} setOpen={setOpen} />}
       </div>
     </main>
+  );
+}
+
+// ---------------------------------------------------------------
+// Championnat de la Confrérie : classement par année (ou toutes années) et carnet de chacun.
+const CRITERES = [
+  ['grapes', 'Cépages'],
+  ['geo', 'Région et appellation'],
+  ['country', 'Pays'],
+  ['vintage', 'Millésime'],
+];
+const rangTxt = (r) => (r === 1 ? '1er' : `${r}e`);
+
+function Championnat({ data, open, setOpen }) {
+  const annees = data.championnat?.annees || [];
+  const [annee, setAnnee] = useState(annees[0] ?? 'toutes');
+  const lignes = annee === 'toutes' ? data.palmares : data.championnat.classements[annee] || [];
+  return (
+    <div className="stack">
+      <div className="chips" role="group" aria-label="Année du championnat">
+        {annees.map((a) => (
+          <button key={a} className="chip" aria-pressed={annee === a} onClick={() => setAnnee(a)}>
+            {a}
+          </button>
+        ))}
+        <button className="chip" aria-pressed={annee === 'toutes'} onClick={() => setAnnee('toutes')}>
+          Toutes les années
+        </button>
+      </div>
+      <p className="small muted" style={{ margin: 0 }}>
+        {annee === 'toutes' ? 'Toutes les soirées révélées' : `Championnat ${annee}`} : classement selon la note moyenne sur 20, c’est-à-dire tous les points de pronostic gagnés, divisés par tous les points
+        possibles, ramenés sur 20. À égalité : le plus de victoires, puis de podiums. Les participations hors concours ne comptent pas. Touchez un nom pour ouvrir son carnet.
+      </p>
+      <div className="panel flush">
+        {!lignes.length && <div className="item muted">Le championnat se remplira après la première révélation.</div>}
+        {lignes.map((p) => (
+          <div key={p.name} className={`result ${p.rang === 1 ? 'first' : ''}`} style={{ display: 'block' }}>
+            <button className="champ-ligne" aria-expanded={open === p.name} onClick={() => setOpen(open === p.name ? null : p.name)}>
+              <span className="rank">{p.rang ?? '–'}</span>
+              <span className="grow">
+                <span className="wine-name">{p.name}</span>
+                <span className="facts">
+                  {p.soirees} soirée{p.soirees > 1 ? 's' : ''} · {p.victoires} victoire{p.victoires > 1 ? 's' : ''} · {p.podiums} podium{p.podiums > 1 ? 's' : ''}
+                  {p.trophees?.length ? ` · ${p.trophees.length} trophée${p.trophees.length > 1 ? 's' : ''}` : ''}
+                </span>
+              </span>
+              <span className="score">
+                {p.moyenne === null ? '–' : fmtNote(p.moyenne)}
+                {p.moyenne !== null && <small>/20</small>}
+              </span>
+            </button>
+            {open === p.name && <Carnet ligne={p} carnet={data.carnets?.[p.name]} historique={(data.palmares.find((x) => x.name === p.name)?.historique || []).filter((h) => annee === 'toutes' || h.annee === annee)} annee={annee} />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Carnet({ ligne, carnet, historique, annee }) {
+  const filtre = (x) => annee === 'toutes' || x.annee === annee;
+  const vins = (carnet?.vins || []).filter(filtre);
+  const apportes = (carnet?.apportes || []).filter(filtre);
+  const forces = CRITERES.filter(([k]) => ligne.forces?.[k] !== null && ligne.forces?.[k] !== undefined);
+  const candidats = forces.filter(([k]) => k !== 'country'); // le pays est le plus facile : il ne compte pas comme point fort
+  const fort = candidats.length ? candidats.reduce((a, b) => (ligne.forces[b[0]] > ligne.forces[a[0]] ? b : a)) : null;
+  const meilleursVins = vins.filter((v) => v.note !== null).sort((a, b) => b.note - a.note).slice(0, 3);
+  return (
+    <div className="carnet stack">
+      <h3 style={{ margin: 0 }}>Le carnet de {ligne.name}</h3>
+      {forces.length > 0 && (
+        <div className="stack" style={{ gap: 6 }}>
+          <div className="small">
+            Points forts{fort ? (
+              <>
+                {' '}
+                : <strong>{fort[1].toLowerCase()}</strong>
+              </>
+            ) : null}
+          </div>
+          {forces.map(([k, l]) => (
+            <div key={k} className="carnet-barre">
+              <span>{l}</span>
+              <span className="carnet-jauge" aria-hidden="true">
+                <span style={{ width: `${Math.min(100, ligne.forces[k])}%` }} />
+              </span>
+              <strong>{String(ligne.forces[k]).replace('.', ',')} %</strong>
+            </div>
+          ))}
+        </div>
+      )}
+      {ligne.trophees?.length > 0 && (
+        <div className="small">
+          <strong>Trophées :</strong> {ligne.trophees.map((t) => `${t.titre} (${t.soiree})`).join(' · ')}
+        </div>
+      )}
+      {ligne.meilleur && (
+        <div className="small">
+          <strong>Record :</strong> {fmtNote(ligne.meilleur.note)}/20 ({ligne.meilleur.soiree})
+        </div>
+      )}
+      {historique.length > 0 && (
+        <div className="stack small" style={{ gap: 6 }}>
+          <strong>Ses soirées</strong>
+          {historique.map((h) => (
+            <Link key={h.code} href={`/t/${h.code}/resultats`} className="row between" style={{ textDecoration: 'none', color: 'inherit', flexWrap: 'nowrap' }}>
+              <span>
+                {h.soiree}
+                {h.date ? <span className="muted"> · {fmtDate(h.date)}</span> : null}
+              </span>
+              <strong style={{ whiteSpace: 'nowrap' }}>{h.hors_concours ? 'hors concours' : `${h.rang ? `${rangTxt(h.rang)} · ` : ''}${fmtNote(h.note)}/20`}</strong>
+            </Link>
+          ))}
+        </div>
+      )}
+      {meilleursVins.length > 0 && (
+        <div className="small">
+          <strong>Ses coups de cœur :</strong> {meilleursVins.map((v) => `${v.vin} (${fmtNote(v.note)}/20)`).join(' · ')}
+        </div>
+      )}
+      {vins.length > 0 && (
+        <details className="small">
+          <summary style={{ cursor: 'pointer' }}>
+            <strong>
+              Les {vins.length} vins goûtés
+            </strong>{' '}
+            (points de pronostic et sa note)
+          </summary>
+          <ul className="carnet-vins">
+            {vins.map((v, i) => (
+              <li key={i}>
+                <span>
+                  {v.vin}
+                  <span className="muted">
+                    {' '}
+                    · {[v.appellation, v.pays !== 'France' ? v.pays : null].filter(Boolean).join(', ')} · {v.soiree}
+                  </span>
+                </span>
+                <span className="carnet-pts">
+                  {fmtNote(v.points)}/{v.max} pts{v.note !== null ? ` · ${fmtNote(v.note)}/20` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {apportes.length > 0 && (
+        <div className="small">
+          <strong>Vins apportés :</strong>{' '}
+          {apportes.map((w) => `${w.vin}${w.moyenne !== null && w.moyenne !== undefined ? ` (${fmtNote(w.moyenne)}/20${w.rang === 1 ? ', meilleur vin' : ''})` : ''}`).join(' · ')}
+        </div>
+      )}
+    </div>
   );
 }

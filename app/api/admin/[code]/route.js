@@ -2,7 +2,8 @@ import { missingFields, PRONO_CHAMPS } from '@/lib/pronostic';
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body, cleanText } from '@/lib/http';
 import { requireAdmin } from '@/lib/auth';
-import { bottleFields, numberMissing, SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
+import { bottleFields, numberMissing, ecrireFiche } from '@/lib/bottles';
+import { ficheVerifiee } from '@/lib/controle';
 import { computeResults } from '@/lib/scoring';
 
 export const dynamic = 'force-dynamic';
@@ -16,13 +17,23 @@ async function loadState(tasting) {
   const inReveal = tasting.phase === 'revelation' || tasting.phase === 'degustation';
   const [participants, bottles, ratings, predictions] = await Promise.all([
     db().from('participants').select('id, name, hors_concours, token_hash, joined_at').eq('tasting_id', tasting.id).order('created_at'),
-    db().from('bottles').select(`${PUBLIC_COLS}, owner_id, ${SECRET_COLS}`).eq('tasting_id', tasting.id),
+    db().from('bottles').select('*').eq('tasting_id', tasting.id), // filtré plus bas : rien de secret n'est envoyé avant la révélation
     db().from('ratings').select('participant_id, bottle_id, note').eq('tasting_id', tasting.id),
     db().from('predictions').select('participant_id, bottle_id, country, region, appellation, grapes, vintage').eq('tasting_id', tasting.id),
   ]).then((rs) => rs.map((r) => unwrap(r)));
 
   const count = (pid) => bottles.filter((b) => b.owner_id === pid).length;
+  // Contrôle des fiches (calculé ici, côté serveur) : l'organisateur n'en reçoit que le bilan,
+  // jamais le contenu des fiches ni le détail des alertes.
+  let controle = null;
+  if (!revealed) {
+    const aRevoir = new Map();
+    for (const b of bottles) if (!ficheVerifiee(b)) { const n = participants.find((p) => p.id === b.owner_id)?.name || '?'; aRevoir.set(n, (aRevoir.get(n) || 0) + 1); }
+    controle = { total: bottles.length, verifiees: bottles.length - [...aRevoir.values()].reduce((s, x) => s + x, 0), aRevoir: [...aRevoir].map(([name, n]) => ({ name, n })) };
+  }
+  const SANS = ['tasting_id', 'created_at', 'price_range', 'fiche_ok'];
   const visibleBottles = bottles
+    .map((b) => Object.fromEntries(Object.entries(b).filter(([k]) => !SANS.includes(k))))
     .map((b) => {
       if (revealed) return b;
       // Pendant la révélation vin par vin : seuls les vins déjà révélés sont détaillés.
@@ -48,6 +59,7 @@ async function loadState(tasting) {
     },
     participants: participants.map(({ token_hash, ...p }) => ({ ...p, connected: !!token_hash, bottles: count(p.id) })),
     bottles: visibleBottles,
+    controle,
     progress: {
       ratings: ratings.filter((r) => r.note !== null).map((r) => [r.participant_id, r.bottle_id]),
       // [participant, vin, nombre de réponses à points remplies sur 5] : jamais le contenu des pronostics
@@ -68,6 +80,31 @@ function shuffle(arr) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+// ----- Historique des corrections après la révélation -----
+// Chaque correction d'une bouteille révélée est enregistrée avec ce qui a changé et
+// l'effet sur le classement, puis affichée à tous sur la page des résultats.
+const LIBELLES = { country: 'Pays', region: 'Région', appellation: 'Appellation', grapes: 'Cépages', vintage: 'Millésime', color: 'Couleur', producer: 'Domaine', wine_name: 'Cuvée' };
+const POINTS = ['country', 'region', 'appellation', 'grapes', 'vintage'];
+async function journaliser(tasting, avant, apres) {
+  const champs = Object.keys(LIBELLES)
+    .filter((k) => String(avant[k] ?? '') !== String(apres[k] ?? ''))
+    .map((k) => ({ champ: LIBELLES[k], avant: avant[k] ?? null, apres: apres[k] ?? null, points: POINTS.includes(k) }));
+  if (!champs.length) return;
+  const one = (t) => db().from(t).select('*').eq('tasting_id', tasting.id);
+  const [participants, bottles, predictions] = (await Promise.all([one('participants'), one('bottles'), one('predictions')])).map((r) => unwrap(r));
+  const classement = (bs) => computeResults({ tasting, participants, bottles: bs, ratings: [], predictions }).tasters.filter((t) => t.rank);
+  const nouveau = classement(bottles);
+  const ancien = classement(bottles.map((x) => (x.id === avant.id ? avant : x)));
+  const note = (t) => Math.round(t.pct * 2000) / 100;
+  const changements = nouveau
+    .map((t) => ({ t, o: ancien.find((x) => x.id === t.id) }))
+    .filter(({ t, o }) => o && (t.points !== o.points || t.rank !== o.rank))
+    .map(({ t, o }) => ({ name: t.name, points: [o.points, t.points], rang: [o.rank, t.rank], note: [note(o), note(t)] }));
+  const entree = { at: new Date().toISOString(), numero: avant.number, vin: [apres.producer, apres.wine_name !== apres.producer ? apres.wine_name : null].filter(Boolean).join(', '), champs, changements };
+  const r = await db().from('tastings').update({ corrections: [...(Array.isArray(tasting.corrections) ? tasting.corrections : []), entree] }).eq('id', tasting.id);
+  if (r.error && !/corrections/.test(r.error.message || '')) unwrap(r); // base pas encore mise à jour : la correction est faite, sans historique
 }
 
 export const POST = route(async (req, { code }) => {
@@ -109,10 +146,15 @@ export const POST = route(async (req, { code }) => {
     // ----- Bouteilles -----
     // Les bouteilles sont saisies par leurs propriétaires. L'organisateur ne peut
     // corriger une bouteille qu'APRÈS la révélation (faute de frappe, etc.).
-    case 'updateBottle':
+    case 'updateBottle': {
       if (!revealed) throw new HttpError(403, 'Seul le propriétaire peut modifier sa bouteille avant la révélation.');
-      unwrap(await one(db().from('bottles').update(bottleFields(b.bottle || {})).eq('id', b.id)));
+      const avant = unwrap(await one(db().from('bottles').select('*').eq('id', b.id)).maybeSingle());
+      if (!avant) throw new HttpError(404, 'Bouteille introuvable.');
+      const { fiche_ok, ...champs } = bottleFields(b.bottle || {});
+      unwrap(await one(db().from('bottles').update(champs).eq('id', b.id)));
+      await journaliser(tasting, avant, champs);
       break;
+    }
 
     // ----- Numéros anonymes -----
     case 'drawNumbers': {

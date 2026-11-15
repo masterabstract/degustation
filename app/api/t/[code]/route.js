@@ -1,7 +1,7 @@
 import { db, unwrap } from '@/lib/db';
 import { route, json } from '@/lib/http';
 import { getTasting, getParticipant, isAdmin } from '@/lib/auth';
-import { SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
+import { OWNER_COLS, ownerView } from '@/lib/bottles';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,8 +23,8 @@ export const GET = route(async (_req, { code }) => {
   if (me) {
     // Uniquement les bouteilles dont CE participant est propriétaire.
     myBottles = unwrap(
-      await db().from('bottles').select(`${PUBLIC_COLS}, ${SECRET_COLS}`).eq('tasting_id', tasting.id).eq('owner_id', me.id).order('created_at')
-    );
+      await db().from('bottles').select(OWNER_COLS).eq('tasting_id', tasting.id).eq('owner_id', me.id).order('created_at')
+    ).map(ownerView);
   }
   if (me && tasting.phase !== 'preparation') {
     bottles = unwrap(

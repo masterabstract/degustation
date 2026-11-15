@@ -7,6 +7,7 @@ import { BAREME } from '@/lib/bareme';
 import BottleForm from './BottleForm';
 import { VintageTable } from './SheetPage';
 import { rememberSoiree } from '@/lib/memo';
+import { controleBouteille } from '@/lib/controle';
 import SoireeEffacee from './SoireeEffacee';
 import { predictionStatus, missingFields } from '@/lib/pronostic';
 import ServeAlert from './ServeAlert';
@@ -420,6 +421,8 @@ function MyBottles({ data, code, onChange }) {
   }
 
   if (!open && !myBottles.length) return null;
+  // Contrôle automatique : alertes non encore confirmées par l'auteur (lui seul les voit).
+  const aVerifier = (b) => (b.fiche_ok ? [] : controleBouteille(b));
 
   return (
     <div className="panel stack">
@@ -454,6 +457,7 @@ function MyBottles({ data, code, onChange }) {
                   Masquez la bouteille et écrivez dessus : n°{b.number}
                 </div>
               )}
+              {open && aVerifier(b).length > 0 && <div className="tiny" style={{ color: '#8a5a00', fontWeight: 600 }}>Fiche à vérifier : touchez « Afficher »</div>}
             </div>
             <button className="btn ghost sm" onClick={() => setVisible(b.id)}>
               Afficher
@@ -473,6 +477,28 @@ function MyBottles({ data, code, onChange }) {
                 )
               ) : (
                 <div className="tiny muted">Le numéro sera attribué au lancement de la dégustation</div>
+              )}
+              {open && aVerifier(b).length > 0 && (
+                <div className="fiche-alerte fiche-verif">
+                  <strong>Fiche à vérifier</strong>
+                  {aVerifier(b).map((a, i) => (
+                    <span key={i}>{a.message}</span>
+                  ))}
+                  <span className="fiche-alerte-actions">
+                    <button
+                      className="btn sm ghost"
+                      onClick={() => {
+                        setVisible(null);
+                        setEditing(b.id);
+                      }}
+                    >
+                      Corriger
+                    </button>
+                    <button className="btn sm ghost" disabled={busy} onClick={() => send({ action: 'confirm', id: b.id })}>
+                      C’est juste
+                    </button>
+                  </span>
+                </div>
               )}
             </div>
             {open && (

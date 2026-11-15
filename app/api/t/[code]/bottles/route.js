@@ -1,7 +1,7 @@
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body } from '@/lib/http';
 import { requireParticipant } from '@/lib/auth';
-import { bottleFields, numberMissing, bottleInPlay, SECRET_COLS, PUBLIC_COLS } from '@/lib/bottles';
+import { bottleFields, numberMissing, bottleInPlay, OWNER_COLS, ownerView, ecrireFiche } from '@/lib/bottles';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +26,7 @@ export const POST = route(async (req, { code }) => {
     if (tasting.phase === 'revelee') throw new HttpError(403, 'La soirée est terminée : les bouteilles sont révélées.');
     const count = unwrap(await mine(db().from('bottles').select('id'))).length;
     if (count >= 6) throw new HttpError(400, 'Maximum 6 bouteilles par participant.');
-    unwrap(await db().from('bottles').insert({ tasting_id: tasting.id, owner_id: me.id, ...bottleFields(b.bottle || {}) }), 'Bouteille non enregistrée.');
+    unwrap(await ecrireFiche((f) => db().from('bottles').insert({ tasting_id: tasting.id, owner_id: me.id, ...f }), bottleFields(b.bottle || {})), 'Bouteille non enregistrée.');
     // Pendant la dégustation, la bouteille reçoit tout de suite le numéro suivant.
     if (tasting.phase === 'degustation') await numberMissing(tasting.id);
   } else if (b.action === 'update') {
@@ -34,8 +34,15 @@ export const POST = route(async (req, { code }) => {
     await ownOrFail(b.id);
     if (tasting.phase === 'degustation' && (await isRevealed(b.id))) throw new HttpError(403, 'Cette bouteille est révélée : elle ne peut plus être modifiée.');
     if (tasting.phase === 'degustation' && (await bottleInPlay(b.id))) throw new HttpError(403, 'Des participants ont déjà noté ou deviné cette bouteille : ses réponses ne peuvent plus changer.');
-    const r = unwrap(await mine(db().from('bottles').update(bottleFields(b.bottle || {})).eq('id', b.id)).select('id'));
+    const r = unwrap(await ecrireFiche((f) => mine(db().from('bottles').update(f).eq('id', b.id)).select('id'), bottleFields(b.bottle || {})));
     if (!r.length) throw new HttpError(404, 'Bouteille introuvable.');
+  } else if (b.action === 'confirm') {
+    // « J'ai vérifié ma fiche, elle est juste » : ne change aucune réponse, seulement le contrôle.
+    if (tasting.phase === 'revelee') throw new HttpError(403, 'Les bouteilles sont révélées.');
+    await ownOrFail(b.id);
+    const r = await mine(db().from('bottles').update({ fiche_ok: true }).eq('id', b.id));
+    if (r.error && /fiche_ok/.test(r.error.message || '')) throw new HttpError(503, 'La base de données doit être mise à jour (voir le guide de mise en ligne).');
+    unwrap(r);
   } else if (b.action === 'delete') {
     if (tasting.phase === 'revelee') throw new HttpError(403, 'Suppression impossible après la révélation.');
     await ownOrFail(b.id);
@@ -46,6 +53,6 @@ export const POST = route(async (req, { code }) => {
     throw new HttpError(400, 'Action inconnue.');
   }
 
-  const myBottles = unwrap(await mine(db().from('bottles').select(`${PUBLIC_COLS}, ${SECRET_COLS}`)).order('created_at'));
+  const myBottles = unwrap(await mine(db().from('bottles').select(OWNER_COLS)).order('created_at')).map(ownerView);
   return json({ myBottles });
 });

@@ -99,6 +99,7 @@ export default function ResultsPage({ code }) {
     <main>
       <Band title="Résultats" sub={data.tasting.name} back={data.me ? `/t/${code}` : '/archives'} />
       <div className="page">
+        <Corrections list={data.corrections || []} />
         <Podium data={data} animate={justFinished} />
         <Trophies list={data.trophies || []} animate={justFinished} />
         <div className="sticky-tabs">
@@ -261,7 +262,7 @@ function Summary({ data }) {
         {copied ? 'Résumé copié' : 'Copier le résumé (pour WhatsApp, e-mail…)'}
       </button>
       <Link className="small center" href="/archives">
-        Voir toutes les soirées et le palmarès
+        Voir toutes les soirées et le championnat
       </Link>
     </div>
   );
@@ -521,5 +522,59 @@ function Standings({ list, n }) {
         </button>
       )}
     </div>
+  );
+}
+
+// Corrections faites par l'organisateur après la révélation : affichées à tous, avec leur effet.
+function Corrections({ list }) {
+  if (!list.length) return null;
+  const v = (x) => (x === null || x === undefined || x === '' ? 'vide' : `«\u00a0${x}\u00a0»`);
+  const f = (n) => String(n).replace('.', ',');
+  const quand = (iso) => new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  const rangTxt = (r) => (r === 1 ? '1er' : `${r}e`);
+  const derniere = list[list.length - 1];
+  const nbChgt = derniere.changements?.length || 0;
+  return (
+    <details className="panel corrections" style={{ marginBottom: 12 }}>
+      <summary>
+        <strong>Classement mis à jour</strong>
+        <span className="small muted">
+          {' '}
+          {list.length} correction{list.length > 1 ? 's' : ''} de l’organisateur après la révélation, la dernière le {quand(derniere.at)}
+          {nbChgt ? ` (${nbChgt} dégustateur${nbChgt > 1 ? 's' : ''} concerné${nbChgt > 1 ? 's' : ''})` : ''}. Voir le détail
+        </span>
+      </summary>
+      <ol className="corrections-liste">
+        {[...list].reverse().map((c, i) => (
+          <li key={i}>
+            <div className="small muted">{quand(c.at)}</div>
+            <div>
+              <strong>Vin n°{c.numero}</strong>
+              {c.vin ? ` (${c.vin})` : ''}
+            </div>
+            <ul>
+              {c.champs.map((x, j) => (
+                <li key={j}>
+                  {x.champ} : {v(x.avant)} → {v(x.apres)}
+                  {!x.points && <span className="muted"> (sans effet sur les points)</span>}
+                </li>
+              ))}
+            </ul>
+            {c.changements?.length ? (
+              <ul className="corrections-effets">
+                {c.changements.map((x) => (
+                  <li key={x.name}>
+                    {x.name} : {f(x.points[0])} → {f(x.points[1])} pts, {f(x.note[0])} → {f(x.note[1])}/20
+                    {x.rang[0] !== x.rang[1] ? `, ${rangTxt(x.rang[0])} → ${rangTxt(x.rang[1])}` : ''}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="small muted" style={{ margin: '4px 0 0' }}>Aucun point modifié.</p>
+            )}
+          </li>
+        ))}
+      </ol>
+    </details>
   );
 }

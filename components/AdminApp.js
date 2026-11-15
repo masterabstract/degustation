@@ -241,6 +241,15 @@ function TabHome({ data, act, busy, code, setTab }) {
       text: `${bottles.length} bouteille${bottles.length > 1 ? 's' : ''} enregistrée${bottles.length > 1 ? 's' : ''} par les participants${without ? ` (${without} sans bouteille)` : ''}`,
       tab: 'bouteilles',
     },
+    ...(data.controle && data.controle.total > 0
+      ? [
+          {
+            done: data.controle.verifiees === data.controle.total,
+            text: `${data.controle.verifiees} fiche${data.controle.verifiees > 1 ? 's' : ''} sur ${data.controle.total} vérifiée${data.controle.verifiees > 1 ? 's' : ''}${data.controle.aRevoir.length ? ` (à revoir : ${data.controle.aRevoir.map((x) => x.name).join(', ')})` : ''}`,
+            tab: 'bouteilles',
+          },
+        ]
+      : []),
     {
       done: numbered,
       text: numbered ? 'Numéros anonymes attribués' : 'Numéros attribués automatiquement au lancement',
@@ -308,7 +317,16 @@ function TabHome({ data, act, busy, code, setTab }) {
               </button>
             </div>
           ))}
-          <button className="btn gold block" disabled={busy} onClick={() => act('start', {}, 'La dégustation est lancée.')}>
+          <button
+            className="btn gold block"
+            disabled={busy}
+            onClick={() => {
+              const r = data.controle?.aRevoir || [];
+              const n = r.reduce((x, y) => x + y.n, 0);
+              if (n && !confirm(`${n} fiche${n > 1 ? 's' : ''} de bouteille ${n > 1 ? 'ne sont pas vérifiées' : 'n’est pas vérifiée'} (${r.map((x) => x.name).join(', ')}). Une erreur de saisie fausserait les points. Lancer quand même ?`)) return;
+              act('start', {}, 'La dégustation est lancée.');
+            }}
+          >
             Lancer la dégustation
           </button>
           <p className="tiny muted center">Vous pouvez lancer dès la première bouteille : les suivantes s’ajouteront au fur et à mesure.</p>
@@ -481,6 +499,8 @@ function TabBottles({ data, act, busy }) {
           Chaque participant enregistre ses bouteilles depuis son téléphone. Vous ne voyez ni leur contenu ni leur propriétaire : seulement leur nombre et leur numéro.
         </Notice>
       )}
+
+      {data.controle && data.controle.total > 0 && <ControleFiches c={data.controle} />}
 
       <div className="panel flush">
         <div className="item" style={{ display: 'block' }}>
@@ -1028,6 +1048,39 @@ function GererSoiree({ code, tasting, act, busy }) {
             </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// Bilan du contrôle automatique des fiches : l'organisateur ne voit ni les fiches ni le détail
+// des alertes (le contenu reste secret), seulement qui doit revoir la sienne.
+function ControleFiches({ c }) {
+  const ok = c.verifiees === c.total;
+  return (
+    <div className={`panel stack controle ${ok ? 'ok' : 'alerte'}`}>
+      <h2>Contrôle des fiches</h2>
+      <p style={{ margin: 0 }}>
+        <strong>
+          {c.verifiees} sur {c.total}
+        </strong>{' '}
+        vérifiée{c.verifiees > 1 ? 's' : ''}
+        {ok ? ' : aucune erreur de saisie repérée.' : '.'}
+      </p>
+      {!ok && (
+        <>
+          <ul className="controle-liste">
+            {c.aRevoir.map((x) => (
+              <li key={x.name}>
+                <strong>{x.name}</strong> : {x.n} fiche{x.n > 1 ? 's' : ''} à revoir
+              </li>
+            ))}
+          </ul>
+          <p className="tiny muted" style={{ margin: 0 }}>
+            Le site a repéré une erreur possible (appellation inconnue, faute de frappe, région ou cépage incohérent). Seul l’auteur voit le détail sur son téléphone, dans « Mes bouteilles » : il corrige, ou
+            confirme que c’est juste.
+          </p>
+        </>
       )}
     </div>
   );
