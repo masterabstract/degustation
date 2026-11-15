@@ -1,7 +1,9 @@
 import { db, unwrap, HttpError } from '@/lib/db';
 import { route, json, body } from '@/lib/http';
 import { organizerPasswordOk } from '@/lib/auth';
-import { computeResults, norm } from '@/lib/scoring';
+import { norm } from '@/lib/scoring';
+import { chargerResultats, compterBadges } from '@/lib/historique';
+import { etatBadges, nombreBadges } from '@/lib/badges';
 import { sur20 } from '@/lib/bareme';
 
 export const dynamic = 'force-dynamic';
@@ -10,21 +12,12 @@ export const dynamic = 'force-dynamic';
 // meilleur vin, le meilleur dégustateur, et un palmarès cumulé par participant.
 // Les soirées en préparation ou en cours n'apparaissent pas.
 export const GET = route(async () => {
-  const tastings = unwrap(await db().from('tastings').select('*').eq('phase', 'revelee').order('revealed_at', { ascending: false }));
-  if (!tastings.length) return json({ soirees: [], palmares: [], championnat: { annees: [], classements: {} }, carnets: {} });
+  const liste = await chargerResultats();
+  if (!liste.length) return json({ soirees: [], palmares: [], championnat: { annees: [], classements: {} }, carnets: {} });
+  const { cumul } = compterBadges(liste);
+  const tastings = [...liste].reverse().map((x) => x.t); // affichage : la plus récente d'abord
+  const RES = new Map(liste.map((x) => [x.t.id, x]));
 
-  const ids = tastings.map((t) => t.id);
-  const q = (t, cols) => db().from(t).select(cols).in('tasting_id', ids);
-  const [participants, bottles, ratings, predictions] = (
-    await Promise.all([
-      q('participants', 'id, tasting_id, name, hors_concours'),
-      q('bottles', 'id, tasting_id, owner_id, number, serve_order, producer, wine_name, appellation, accepted_names, grapes, grape_mix, region, subregion, zone, country, color, vintage, notes'),
-      q('ratings', 'tasting_id, participant_id, bottle_id, note, aromes, commentaire'),
-      q('predictions', 'tasting_id, participant_id, bottle_id, appellation, grapes, region, country, color, vintage'),
-    ])
-  ).map((r) => unwrap(r));
-
-  const by = (rows, id) => rows.filter((r) => r.tasting_id === id);
   const label = (w) => [w.producer, w.wine_name !== w.producer ? w.wine_name : null].filter(Boolean).join(', ') + (w.vintage ? ` ${w.vintage}` : '');
   const anneeDe = (t) => Number(String(t.event_date || t.revealed_at || '').slice(0, 4)) || null;
   const CRITERES = ['grapes', 'geo', 'country', 'vintage'];
@@ -33,11 +26,11 @@ export const GET = route(async () => {
   // Regroupement par prénom (sans accents ni majuscules) : palmarès, championnat par année, carnet.
   const people = new Map();
   const soirees = tastings.map((t) => {
-    const res = computeResults({ tasting: t, participants: by(participants, t.id), bottles: by(bottles, t.id), ratings: by(ratings, t.id), predictions: by(predictions, t.id) });
+    const { res, ratings: notesSoiree, participants: ptsSoiree, bottles: btsSoiree } = RES.get(t.id);
     const bestWines = res.wines.filter((w) => w.rank === 1);
     const bestTasters = res.tasters.filter((x) => x.rank === 1 && x.answered > 0);
     const annee = anneeDe(t);
-    const notesDe = (pid) => by(ratings, t.id).filter((r) => r.participant_id === pid);
+    const notesDe = (pid) => notesSoiree.filter((r) => r.participant_id === pid);
 
     for (const x of res.tasters) {
       const key = norm(x.name);
@@ -80,8 +73,8 @@ export const GET = route(async () => {
       event_date: t.event_date,
       revealed_at: t.revealed_at,
       annee,
-      participants: by(participants, t.id).length,
-      vins: by(bottles, t.id).length,
+      participants: ptsSoiree.length,
+      vins: btsSoiree.length,
       meilleurVin: bestWines.map((w) => ({ label: label(w), appellation: w.appellation, note: w.average, owner: w.owner })),
       meilleurDegustateur: bestTasters.map((x) => ({ name: x.name, points: x.points, max: x.max, pct: Math.round(x.pct * 1000) / 10, note: sur20(x.pct) })),
     };
@@ -115,7 +108,9 @@ export const GET = route(async () => {
   const annees = [...new Set(soirees.map((s) => s.annee).filter(Boolean))].sort((a, b) => b - a);
   const classements = Object.fromEntries(annees.map((a) => [a, trier([...people.values()].filter((p) => p.annees[a]).map((p) => ligne(p.name, p.annees[a])))]));
   const palmares = trier([...people.values()].map((p) => ({ ...ligne(p.name, p.total), historique: p.historique })));
-  const carnets = Object.fromEntries([...people.values()].map((p) => [p.name, { vins: p.vins, apportes: p.apportes }]));
+  const badgesDe = (name) => cumul.get(norm(name))?.compteur;
+  const carnets = Object.fromEntries([...people.values()].map((p) => [p.name, { vins: p.vins, apportes: p.apportes, badges: etatBadges(badgesDe(p.name)) }]));
+  for (const rows of [palmares, ...Object.values(classements)]) for (const r of rows) r.badges = nombreBadges(badgesDe(r.name));
 
   return json({ soirees, palmares, championnat: { annees, classements }, carnets });
 });

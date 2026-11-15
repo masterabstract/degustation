@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { BadgesDuSoir } from './Badges';
 import SoireeEffacee from './SoireeEffacee';
 import Link from 'next/link';
 import { api, Band, Notice, Capsule, Loading, fmtNote } from './ui';
@@ -102,6 +103,7 @@ export default function ResultsPage({ code }) {
         <Corrections list={data.corrections || []} />
         <Podium data={data} animate={justFinished} />
         <Trophies list={data.trophies || []} animate={justFinished} />
+        <BadgesDuSoir code={code} me={data.me} />
         <div className="sticky-tabs">
           <nav className="tabs" role="tablist">
             {TABS.map(([id, label]) => (

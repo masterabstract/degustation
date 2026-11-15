@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, Band, Notice, Loading, fmtDate, fmtNote, plural } from '@/components/ui';
+import { GrilleBadges, ReglesBadges } from '@/components/Badges';
 
 export default function Archives() {
   const [data, setData] = useState(null);
@@ -221,6 +222,7 @@ function Championnat({ data, open, setOpen }) {
                 <span className="facts">
                   {p.soirees} soirée{p.soirees > 1 ? 's' : ''} · {p.victoires} victoire{p.victoires > 1 ? 's' : ''} · {p.podiums} podium{p.podiums > 1 ? 's' : ''}
                   {p.trophees?.length ? ` · ${p.trophees.length} trophée${p.trophees.length > 1 ? 's' : ''}` : ''}
+                  {p.badges ? ` · ${p.badges} badge${p.badges > 1 ? 's' : ''}` : ''}
                 </span>
               </span>
               <span className="score">
@@ -266,6 +268,15 @@ function Carnet({ ligne, carnet, historique, annee }) {
               <strong>{String(ligne.forces[k]).replace('.', ',')} %</strong>
             </div>
           ))}
+        </div>
+      )}
+      {carnet?.badges && (
+        <div className="stack" style={{ gap: 8 }}>
+          <div className="small">
+            <strong>Ses badges</strong> <span className="muted">(toutes soirées confondues)</span>
+          </div>
+          <GrilleBadges badges={carnet.badges} />
+          <ReglesBadges />
         </div>
       )}
       {ligne.trophees?.length > 0 && (

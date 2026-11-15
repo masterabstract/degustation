@@ -861,3 +861,43 @@ details[open] > summary::before { content: '− '; }
 .carnet-vins li { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; border-bottom: 1px dashed var(--trait); padding-bottom: 5px; }
 .carnet-pts { white-space: nowrap; font-weight: 700; color: var(--lie); }
 @media (max-width: 400px) { .carnet-barre { grid-template-columns: 1fr auto; } .carnet-jauge { grid-column: 1 / -1; grid-row: 2; } .carnet-vins li { flex-direction: column; gap: 2px; } }
+
+/* Badges de la Confrérie : une médaille par famille, cinq paliers */
+.medaille { --t: 56px; flex: none; width: var(--t); height: var(--t); border-radius: 50%; display: inline-grid; place-items: center; position: relative;
+  box-shadow: inset 0 0 0 calc(var(--t) * 0.06) rgba(255, 255, 255, 0.45), inset 0 calc(var(--t) * -0.08) calc(var(--t) * 0.16) rgba(0, 0, 0, 0.18), 0 2px 6px rgba(40, 20, 10, 0.22); }
+.medaille svg { width: 54%; height: 54%; fill: none; stroke: rgba(48, 24, 8, 0.82); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.medaille.bronze { background: radial-gradient(circle at 32% 28%, #f6d2ae 0%, #c98450 42%, #8a4f26 100%); }
+.medaille.argent { background: radial-gradient(circle at 32% 28%, #ffffff 0%, #c7ced5 45%, #7f8a95 100%); }
+.medaille.or { background: radial-gradient(circle at 32% 28%, #fff3c4 0%, #e0b44a 45%, #93661a 100%); }
+.medaille.platine { background: radial-gradient(circle at 32% 28%, #ffffff 0%, #d4e6ec 42%, #7d9aa7 100%); }
+.medaille.platine svg { stroke: #24414e; }
+.medaille.diamant { background: radial-gradient(circle at 32% 28%, #f2feff 0%, #8fdcf5 40%, #2b78b3 100%); overflow: hidden; }
+.medaille.diamant svg { stroke: #0b3352; }
+.medaille.diamant::after { content: ''; position: absolute; inset: -40%; background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.75) 50%, transparent 60%); animation: diamant 3.2s ease-in-out infinite; }
+@keyframes diamant { 0%, 55% { transform: translateX(-60%); } 100% { transform: translateX(60%); } }
+@media (prefers-reduced-motion: reduce) { .medaille.diamant::after { animation: none; display: none; } }
+.medaille.verrou { background: #f1ebe0; box-shadow: inset 0 0 0 2px #d6c9b3; }
+.medaille.verrou svg { stroke: #b9a98e; }
+.badge-palier { font-weight: 800; letter-spacing: 0.02em; }
+.badge-palier.bronze { color: #9a5a2c; }
+.badge-palier.argent { color: #66717c; }
+.badge-palier.or { color: #9a6c12; }
+.badge-palier.platine { color: #4b6d7b; }
+.badge-palier.diamant { color: #2069a2; }
+.badges-grille { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.badges-grille strong { font-size: 0.9rem; line-height: 1.2; }
+.badges-grille li { display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; padding: 10px 8px; border-radius: 12px; background: var(--papier); border: 1px solid var(--trait); }
+.badges-grille .badges-txt { justify-items: center; width: 100%; }
+.badges-grille .badges-jauge { width: 100%; }
+.badges-grille li.verrou { opacity: 0.85; }
+.badges-txt { display: grid; gap: 3px; min-width: 0; line-height: 1.25; }
+.badges-jauge { display: block; height: 6px; border-radius: 99px; background: #eadfcd; overflow: hidden; }
+.badges-jauge > span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--bordeaux), var(--or)); }
+.badges-regles summary { cursor: pointer; font-weight: 700; }
+.badges-regles ul { margin: 4px 0 0; padding-left: 1.2em; display: grid; gap: 3px; }
+.badges-soir { border-color: var(--or); }
+.badges-soir-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.badges-soir-liste > li { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px dashed var(--trait); }
+.badges-soir-liste > li.moi strong { color: var(--bordeaux); }
+.badges-soir-medailles { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+.badges-soir-item { display: flex; align-items: center; gap: 8px; line-height: 1.2; }
