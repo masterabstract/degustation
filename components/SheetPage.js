@@ -12,7 +12,7 @@ import SoireeEffacee from './SoireeEffacee';
 import { optionsFor, fillFromAppellation, fillFromRegion, describePatch, regionOptions, appellationOptions, grapeOptions, appellationGrapes } from '@/lib/autofill';
 import { ROBES, AROMES, SCALES, COLORS, COUNTRIES, REGIONS, GRAPES, NON_VINTAGE } from '@/lib/constants';
 import { BAREME, VINTAGE_DECADES } from '@/lib/bareme';
-import { missingFields, listeChamps, PRONO_CHAMPS } from '@/lib/pronostic';
+import { missingFields, listeChamps, PRONO_CHAMPS, predictionStatus } from '@/lib/pronostic';
 import { readDraft, writeDraft, deleteDraft, sendPendingDrafts, isNetworkError, markRefused } from '@/lib/brouillons';
 
 const EMPTY_RATING = {
@@ -621,22 +621,24 @@ export default function SheetPage({ code, number: routeNumber }) {
             ou touchez à nouveau pour passer.
           </div>
         )}
-        <div className="inner">
-          <button className="btn ghost sm" disabled={!prev} onClick={() => prev && go(`/t/${code}/vin/${prev.number}`, prev.number)} aria-label="Vin précédent">
-            ‹ {prev ? `n°${prev.number}` : ''}
+        {/* Onglets des vins : un numéro par vin, avec son état ; touchez pour passer d'un vin à l'autre. */}
+        <div className="inner sheet-nav">
+          <button className="btn ghost sm sheet-fleche" disabled={!prev} onClick={() => prev && go(`/t/${code}/vin/${prev.number}`, prev.number)} aria-label={prev ? `Vin précédent, n°${prev.number}` : 'Vin précédent'}>
+            ‹
           </button>
-          <div className={`save-state ${save.status}`} aria-live="polite">
-            {save.msg || (locked ? 'Lecture seule' : 'Enregistrement automatique')}
-          </div>
+          <OngletsVins bottles={bottles} actif={bottle.number} state={state} pred={pred} onGo={(n) => go(`/t/${code}/vin/${n}`, n)} />
           {next ? (
-            <button className="btn sm" onClick={() => go(`/t/${code}/vin/${next.number}`, next.number)} aria-label="Vin suivant">
-              n°{next.number} ›
+            <button className="btn sm sheet-fleche" onClick={() => go(`/t/${code}/vin/${next.number}`, next.number)} aria-label={`Vin suivant, n°${next.number}`}>
+              ›
             </button>
           ) : (
             <button className="btn sm" onClick={() => go(`/t/${code}`)}>
               Liste
             </button>
           )}
+        </div>
+        <div className={`save-state ${save.status}`} aria-live="polite">
+          {save.msg || (locked ? 'Lecture seule' : 'Enregistrement automatique')}
         </div>
       </div>
     </main>
@@ -679,5 +681,45 @@ export function VintageTable() {
         ))}
       </tbody>
     </table>
+  );
+}
+
+// Onglets des vins (bas de la fiche) : vert = pronostic complet, orange = incomplet, gris = à faire,
+// pointillé = votre bouteille, cadenas = vin révélé ; un anneau doré signale le vin en cours de service.
+function OngletsVins({ bottles, actif, state, pred, onGo }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current?.querySelector('[aria-current="true"]');
+    el?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+  }, [actif]);
+  const mine = new Set((state.myBottles || []).map((b) => b.id));
+  const revealed = new Set(state.tasting.revealed_numbers || []);
+  const etat = (b) => {
+    if (mine.has(b.id)) return ['mien', 'votre bouteille'];
+    if (revealed.has(b.number) || state.tasting.phase === 'revelation' || state.tasting.phase === 'revelee') return ['revele', 'révélé'];
+    const st = predictionStatus(b.number === actif ? pred : state.sheets?.[b.id]?.prediction);
+    return st === 'complet' ? ['complet', 'pronostic complet'] : st === 'incomplet' ? ['incomplet', 'pronostic incomplet'] : ['afaire', 'pronostic à faire'];
+  };
+  return (
+    <div className="vins-onglets" ref={ref} role="tablist" aria-label="Choisir un vin">
+      {bottles.map((b) => {
+        const [cls, txt] = etat(b);
+        const service = state.tasting.current_number === b.number;
+        return (
+          <button
+            key={b.id}
+            type="button"
+            role="tab"
+            aria-selected={b.number === actif}
+            aria-current={b.number === actif ? 'true' : undefined}
+            className={`vin-onglet ${cls}${service ? ' service' : ''}`}
+            aria-label={`Vin n°${b.number}, ${txt}${service ? ', en cours de service' : ''}`}
+            onClick={() => b.number !== actif && onGo(b.number)}
+          >
+            {b.number}
+          </button>
+        );
+      })}
+    </div>
   );
 }

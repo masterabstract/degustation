@@ -81,7 +81,7 @@ export function GrilleBadges({ badges }) {
         const f = famille(b.famille);
         const p = b.palier ? palier(b.palier) : null;
         const prochain = b.suivant;
-        const base = p ? p.seuil : 0;
+        const base = b.base || 0;
         const pct = prochain ? Math.round(((b.n - base) / (prochain.seuil - base)) * 100) : 100;
         return (
           <li key={b.famille} className={p ? '' : 'verrou'}>
@@ -119,12 +119,13 @@ export function ReglesBadges() {
     <details className="small badges-regles">
       <summary>Comment gagner les badges ?</summary>
       <p style={{ margin: '8px 0 4px' }}>
-        Chaque badge a cinq paliers : {PALIERS.map((p) => `${p.nom} (${p.seuil})`).join(', ')}. Les badges se cumulent d’une soirée à l’autre et ne se perdent jamais.
+        Chaque badge a cinq paliers : {PALIERS.map((p) => p.nom).join(', ')}. Plus la rubrique est difficile, plus les paliers arrivent vite. Les badges se cumulent d’une soirée à l’autre et ne se perdent jamais.
       </p>
       <ul>
         {FAMILLES.map((f) => (
           <li key={f.id}>
-            <strong>{f.nom}</strong> : {f.regle.charAt(0).toLowerCase() + f.regle.slice(1)}.
+            <strong>{f.nom}</strong> : {f.regle.charAt(0).toLowerCase() + f.regle.slice(1)}.{' '}
+            <span className="muted">{f.seuils.map((n, i) => `${PALIERS[i].nom} ${n}`).join(' · ')}</span>
           </li>
         ))}
       </ul>

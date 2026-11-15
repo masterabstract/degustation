@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { MonBilan, CarteBilan } from './Bilan';
+import ParticipantNav from './ParticipantNav';
+import { bilanSoiree } from '@/lib/bilan';
 import { BadgesDuSoir } from './Badges';
 import SoireeEffacee from './SoireeEffacee';
 import Link from 'next/link';
@@ -8,9 +11,12 @@ import { api, Band, Notice, Capsule, Loading, fmtNote } from './ui';
 import { sur20 } from '@/lib/bareme';
 
 
+// Onglets des résultats : un seul thème à l'écran à la fois.
 const TABS = [
-  ['vins', 'Meilleur vin'],
-  ['degustateurs', 'Meilleur dégustateur'],
+  ['podium', 'Podium'],
+  ['bilan', 'Mon bilan'],
+  ['vins', 'Les vins'],
+  ['degustateurs', 'Classement'],
   ['commentaires', 'Commentaires'],
   ['resume', 'Résumé'],
 ];
@@ -51,7 +57,7 @@ function guessLine(g) {
 export default function ResultsPage({ code }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-  const [tab, setTab] = useState('vins');
+  const [tab, setTab] = useState('podium');
 
   const [justFinished, setJustFinished] = useState(false);
 
@@ -94,19 +100,18 @@ export default function ResultsPage({ code }) {
     );
   }
   if (!data) return <Loading label="Calcul des résultats…" />;
-  if (data.live) return <LiveReveal data={data} code={code} />;
+  const nav = data.me ? <ParticipantNav code={code} actif="resultats" phase={data.tasting.phase} revelations={(data.tasting.revealed_numbers || []).length} /> : null;
+  if (data.live) return <LiveReveal data={data} code={code} nav={nav} />;
 
+  const moi = data.me && data.tasters?.find((t) => t.id === data.me.id && t.answered > 0);
+  const onglets = TABS.filter(([id]) => id !== 'bilan' || moi);
   return (
     <main>
       <Band title="Résultats" sub={data.tasting.name} back={data.me ? `/t/${code}` : '/archives'} />
-      <div className="page">
-        <Corrections list={data.corrections || []} />
-        <Podium data={data} animate={justFinished} />
-        <Trophies list={data.trophies || []} animate={justFinished} />
-        <BadgesDuSoir code={code} me={data.me} />
+      <div className={`page${nav ? ' avec-pnav' : ''}`}>
         <div className="sticky-tabs">
-          <nav className="tabs" role="tablist">
-            {TABS.map(([id, label]) => (
+          <nav className="tabs defile" role="tablist" aria-label="Résultats">
+            {onglets.map(([id, label]) => (
               <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
                 {label}
               </button>
@@ -114,12 +119,27 @@ export default function ResultsPage({ code }) {
           </nav>
         </div>
         <div className="stack reveal-in" key={tab}>
+          {tab === 'podium' && (
+            <>
+              <Corrections list={data.corrections || []} />
+              <Podium data={data} animate={justFinished} />
+              <Trophies list={data.trophies || []} animate={justFinished} />
+              <BadgesDuSoir code={code} me={data.me} />
+              {moi && (
+                <button className="btn block" onClick={() => setTab('bilan')}>
+                  Voir mon bilan de la soirée
+                </button>
+              )}
+            </>
+          )}
+          {tab === 'bilan' && <MonBilan data={data} />}
           {tab === 'vins' && <Wines data={data} />}
           {tab === 'degustateurs' && <Tasters data={data} />}
           {tab === 'commentaires' && <Comments data={data} />}
           {tab === 'resume' && <Summary data={data} />}
         </div>
       </div>
+      {nav}
     </main>
   );
 }
@@ -193,9 +213,21 @@ function Tasters({ data }) {
               <small>/20</small>
             </div>
           </div>
-          <button className="linklike small" style={{ marginTop: 8, marginLeft: 'calc(1.6em + 14px)' }} onClick={() => setOpen(open === t.id ? null : t.id)}>
-            {open === t.id ? 'Masquer le détail' : 'Voir le détail du calcul'}
-          </button>
+          <div className="row" style={{ marginTop: 8, marginLeft: 'calc(1.6em + 14px)', gap: 16 }}>
+            <button className="linklike small" onClick={() => setOpen(open === t.id ? null : t.id)}>
+              {open === t.id ? 'Masquer le détail' : 'Voir le détail du calcul'}
+            </button>
+            {t.answered > 0 && (
+              <button className="linklike small" onClick={() => setOpen(open === `b${t.id}` ? null : `b${t.id}`)}>
+                {open === `b${t.id}` ? 'Masquer le bilan' : 'Voir son bilan'}
+              </button>
+            )}
+          </div>
+          {open === `b${t.id}` && (
+            <div style={{ marginTop: 10, marginLeft: 'calc(1.6em + 14px)' }}>
+              <CarteBilan b={bilanSoiree(data, t.id)} moi={data.me?.id === t.id} />
+            </div>
+          )}
           {open === t.id && (
             <div style={{ marginTop: 10, marginLeft: 'calc(1.6em + 14px)' }} className="stack">
               {t.details.map((d) => (
@@ -271,7 +303,9 @@ function Summary({ data }) {
 }
 
 // ---------- Révélation vin par vin, en direct ----------
-function LiveReveal({ data, code }) {
+function LiveReveal({ data, code, nav }) {
+  const [vue, setVue] = useState('dernier'); // dernier vin · classement · tous les vins
+  const [ouvert, setOuvert] = useState(null); // vin dont on affiche les pronostics, dans « Tous les vins »
   const seen = useRef(null);
   const [count, setCount] = useState(null); // compte à rebours en cours
   const [shownCount, setShownCount] = useState(data.revealed.length);
@@ -309,7 +343,7 @@ function LiveReveal({ data, code }) {
   return (
     <main>
       <Band title="Révélation" sub={data.tasting.name} back={data.me ? `/t/${code}` : '/archives'} />
-      <div className="page stack">
+      <div className={`page stack${nav ? ' avec-pnav' : ''}`}>
         {count !== null && next && (
           <div className="countdown" role="status" aria-live="assertive">
             <div>
@@ -342,8 +376,23 @@ function LiveReveal({ data, code }) {
             <p className="muted">L’organisateur va révéler le premier vin…</p>
           </div>
         )}
-        {shownCount > 0 && data.standings?.length > 0 && <Standings list={data.standings} n={shownCount} />}
-        {[...visible].reverse().map((w, i) => (
+        {shownCount > 0 && (
+          <div className="sticky-tabs" style={{ marginBottom: -4 }}>
+            <nav className="tabs defile" role="tablist" aria-label="Révélation">
+              {[
+                ['dernier', 'Dernier vin'],
+                ['classement', 'Classement'],
+                ['tous', `Tous les vins (${shownCount})`],
+              ].map(([id, label]) => (
+                <button key={id} role="tab" aria-selected={vue === id} onClick={() => setVue(id)}>
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        )}
+        {vue === 'classement' && shownCount > 0 && (data.standings?.length > 0 ? <Standings list={data.standings} n={shownCount} /> : <div className="panel muted">Le classement apparaîtra au fil des révélations.</div>)}
+        {vue !== 'classement' && [...visible].reverse().filter((_, i) => vue === 'tous' || i === 0).map((w, i) => (
           <div key={w.id} className={`panel reveal-card ${i === 0 ? 'latest' : ''}`}>
             <div className="row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
               <Capsule n={w.number} size={i === 0 ? 'lg' : 'sm'} />
@@ -365,7 +414,12 @@ function LiveReveal({ data, code }) {
                 )}
               </div>
             </div>
-            {i === 0 && w.scores?.length > 0 && (
+            {i !== 0 && w.scores?.length > 0 && (
+              <button className="linklike small" style={{ marginTop: 8 }} onClick={() => setOuvert(ouvert === w.id ? null : w.id)}>
+                {ouvert === w.id ? 'Masquer les pronostics' : 'Voir les pronostics sur ce vin'}
+              </button>
+            )}
+            {(i === 0 || ouvert === w.id) && w.scores?.length > 0 && (
               <div style={{ marginTop: 10 }}>
                 <div className="section-label" style={{ marginTop: 0 }}>
                   Les pronostics sur ce vin (sur {w.scores[0].max} points)
@@ -405,6 +459,7 @@ function LiveReveal({ data, code }) {
           </div>
         ))}
       </div>
+      {nav}
     </main>
   );
 }

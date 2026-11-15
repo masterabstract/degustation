@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api, usePolling, Band, Notice, Capsule, Loading, fmtDate } from './ui';
 import { BAREME } from '@/lib/bareme';
@@ -12,6 +12,7 @@ import SoireeEffacee from './SoireeEffacee';
 import { predictionStatus, missingFields } from '@/lib/pronostic';
 import ServeAlert from './ServeAlert';
 import DraftSync from './DraftSync';
+import ParticipantNav from './ParticipantNav';
 
 export function ratingDone(r) {
   return r && r.note !== null && r.note !== undefined;
@@ -23,6 +24,31 @@ export function predictionDone(p) {
 
 export default function ParticipantApp({ code }) {
   const { data, setData, error, refresh } = usePolling(() => api(`/api/t/${code}`), 5000, [code]);
+  // Onglet affiché (barre en bas) : retenu dans l'adresse (?onglet=bouteille), sans recharger la page.
+  const [onglet, setOnglet] = useState(null);
+  const phase = data?.tasting?.phase;
+  useEffect(() => {
+    if (!phase) return;
+    setOnglet((o) => {
+      if (o) return o;
+      const q = new URLSearchParams(window.location.search).get('onglet');
+      if (q === 'bouteille' || q === 'regles' || q === 'vins') return q;
+      return phase === 'preparation' ? 'bouteille' : 'vins'; // avant la soirée : enregistrer sa bouteille
+    });
+  }, [phase]);
+  // Dès le lancement de la dégustation, on bascule une fois sur les vins à pronostiquer.
+  const phasePrec = useRef(phase);
+  useEffect(() => {
+    if (phasePrec.current === 'preparation' && phase === 'degustation') setOnglet('vins');
+    phasePrec.current = phase;
+  }, [phase]);
+  const choisir = (id) => {
+    setOnglet(id);
+    try {
+      window.history.replaceState(window.history.state, '', id === 'vins' ? window.location.pathname : `${window.location.pathname}?onglet=${id}`);
+    } catch {}
+    window.scrollTo({ top: 0 });
+  };
   // On retient la soirée sur ce téléphone : retour direct depuis l'accueil, sans retaper le code.
   const meName = data?.me?.name;
   const tName = data?.tasting?.name;
@@ -47,63 +73,118 @@ export default function ParticipantApp({ code }) {
   if (!me) return <Join data={data} code={code} onJoined={refresh} />;
 
   const sub = `${me.name}${tasting.event_date ? ` · ${fmtDate(tasting.event_date)}` : ''}`;
+  const revelations = (tasting.revealed_numbers || []).length;
+
+  // Pastilles de la barre d'onglets : pronostics à compléter, fiche de bouteille à vérifier.
+  const mineIds = new Set((data.myBottles || []).map((b) => b.id));
+  const aCompleter =
+    tasting.phase === 'degustation'
+      ? data.bottles.filter((b) => !mineIds.has(b.id) && !(tasting.revealed_numbers || []).includes(b.number) && (tasting.served_numbers || []).includes(b.number) && predictionStatus(data.sheets?.[b.id]?.prediction) !== 'complet').length
+      : 0;
+  const bouteilleAlerte =
+    (tasting.phase === 'preparation' && !(data.myBottles || []).length) || (data.myBottles || []).some((b) => !b.fiche_ok && controleBouteille(b).length > 0) ? '!' : null;
 
   return (
     <main>
       {/* Aucun accès à l'organisation depuis les pages des participants, même pour l'organisateur qui joue. */}
       <Band title={tasting.name} sub={sub} />
       <ServeAlert code={code} tasting={tasting} />
-      <div className="page stack">
+      <div className="page stack avec-pnav">
         {error && <Notice kind="error">Connexion instable, nouvelle tentative automatique…</Notice>}
         <DraftSync code={code} />
-        {tasting.phase === 'preparation' && <Waiting name={me.name} />}
-        {tasting.phase === 'preparation' && <MyBottles data={data} code={code} onChange={(myBottles) => setData((d) => ({ ...d, myBottles }))} />}
-        {tasting.phase === 'revelation' && (
-          <div className="panel stack center reveal-in">
-            <h2>La révélation a commencé</h2>
-            <p>Les fiches sont verrouillées. Suivez la révélation des vins, un par un, jusqu’au podium.</p>
-            <Link href={`/t/${code}/resultats`} className="btn gold block">
-              Suivre la révélation
+
+        {onglet === 'vins' && (
+          <>
+            {tasting.phase === 'preparation' && <Waiting name={me.name} onBouteille={() => choisir('bouteille')} />}
+            {tasting.phase === 'revelation' && (
+              <div className="panel stack center reveal-in">
+                <h2>La révélation a commencé</h2>
+                <p>Les fiches sont verrouillées. Suivez la révélation des vins, un par un, jusqu’au podium.</p>
+                <Link href={`/t/${code}/resultats`} className="btn gold block">
+                  Suivre la révélation
+                </Link>
+              </div>
+            )}
+            {tasting.phase === 'degustation' && revelations > 0 && (
+              <div className="panel stack center reveal-in">
+                <h2>Vin n°{tasting.revealed_numbers[revelations - 1]} révélé</h2>
+                <p className="small">
+                  {revelations > 1 ? `${revelations} vins sont révélés. ` : ''}Découvrez la bouteille, les points de chacun et le classement provisoire. La dégustation continue pour les autres vins.
+                </p>
+                <Link href={`/t/${code}/resultats`} className="btn gold block">
+                  Voir la révélation
+                </Link>
+              </div>
+            )}
+            {tasting.phase === 'revelee' && (
+              <div className="panel stack center reveal-in">
+                <h2>Les bouteilles sont révélées</h2>
+                <p>Découvrez les vins, le classement, vos badges et votre bilan personnel : vos points forts et ce que vous pouvez encore travailler.</p>
+                <Link href={`/t/${code}/resultats`} className="btn gold block">
+                  Voir les résultats et mon bilan
+                </Link>
+              </div>
+            )}
+            {tasting.phase !== 'preparation' && <WineList data={data} code={code} />}
+          </>
+        )}
+
+        {onglet !== 'vins' && (tasting.phase === 'revelation' || (tasting.phase === 'degustation' && revelations > 0)) && (
+          <div className="notice ok row between" style={{ flexWrap: 'nowrap' }}>
+            <span>
+              <strong>{tasting.phase === 'revelation' ? 'La révélation a commencé' : `Vin n°${tasting.revealed_numbers[revelations - 1]} révélé`}</strong>
+            </span>
+            <Link className="btn sm" href={`/t/${code}/resultats`}>
+              Voir
             </Link>
           </div>
         )}
-        {tasting.phase === 'degustation' && (tasting.revealed_numbers || []).length > 0 && (
-          <div className="panel stack center reveal-in">
-            <h2>Vin n°{tasting.revealed_numbers[tasting.revealed_numbers.length - 1]} révélé</h2>
-            <p className="small">
-              {tasting.revealed_numbers.length > 1 ? `${tasting.revealed_numbers.length} vins sont révélés. ` : ''}Découvrez la bouteille, les points de chacun et le classement provisoire. La dégustation continue pour les autres vins.
+        {onglet === 'bouteille' && (
+          <>
+            {tasting.phase === 'preparation' && <Waiting name={me.name} />}
+            <MyBottles data={data} code={code} onChange={(myBottles) => setData((d) => ({ ...d, myBottles }))} />
+            {!(data.myBottles || []).length && tasting.phase !== 'preparation' && (
+              <div className="panel">
+                <p className="small muted" style={{ margin: 0 }}>
+                  Vous n’avez pas enregistré de bouteille pour cette soirée.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {onglet === 'regles' && (
+          <>
+            <Rules ouvert regles={tasting.regles} />
+            <p className="center tiny muted">
+              Ce téléphone est lié à {me.name}. Pour changer de téléphone, demandez à l’organisateur de libérer votre prénom.
             </p>
-            <Link href={`/t/${code}/resultats`} className="btn gold block">
-              Voir la révélation
-            </Link>
-          </div>
+          </>
         )}
-        {tasting.phase === 'revelee' && (
-          <div className="panel stack center reveal-in">
-            <h2>Les bouteilles sont révélées</h2>
-            <p>Découvrez les vins, les notes moyennes et le classement des dégustateurs.</p>
-            <Link href={`/t/${code}/resultats`} className="btn gold block">
-              Voir les résultats
-            </Link>
-          </div>
-        )}
-        {tasting.phase !== 'preparation' && <WineList data={data} code={code} />}
-        {/* Pendant la soirée, ses propres bouteilles passent sous les vins à pronostiquer, contenu masqué. */}
-        {tasting.phase !== 'preparation' && <MyBottles data={data} code={code} onChange={(myBottles) => setData((d) => ({ ...d, myBottles }))} />}
-        {tasting.phase === 'degustation' && <Rules />}
-        <p className="center tiny muted">
-          Ce téléphone est lié à {me.name}. Pour changer de téléphone, demandez à l’organisateur de libérer votre prénom.
-        </p>
       </div>
+      <ParticipantNav
+        code={code}
+        actif={onglet}
+        phase={tasting.phase}
+        revelations={revelations}
+        badges={{ vins: aCompleter || null, bouteille: bouteilleAlerte }}
+        point={{ resultats: revelations > 0 || tasting.phase === 'revelation' || tasting.phase === 'revelee' }}
+        onSelect={choisir}
+      />
     </main>
   );
 }
 
-function Waiting({ name }) {
+function Waiting({ name, onBouteille }) {
   return (
     <div className="panel stack center">
       <h2>Bienvenue, {name}</h2>
-      <p>La dégustation n’a pas encore commencé. Enregistrez votre ou vos bouteilles ci-dessous. Les vins à déguster apparaîtront tout seuls dès que l’organisateur lancera la soirée.</p>
+      <p>La dégustation n’a pas encore commencé. Les vins à déguster apparaîtront ici tout seuls dès que l’organisateur lancera la soirée.</p>
+      {onBouteille && (
+        <button className="btn gold block" onClick={onBouteille}>
+          Enregistrer ma bouteille
+        </button>
+      )}
       <div className="row" style={{ justifyContent: 'center' }}>
         <span className="spinner" />
         <span className="small muted">En attente de l’organisateur</span>
@@ -207,11 +288,11 @@ function WineList({ data, code }) {
   );
 }
 
-function Rules() {
+function Rules({ ouvert = false, regles = 1 }) {
   const F = BAREME.france;
   const E = BAREME.foreign;
   return (
-    <details className="panel">
+    <details className="panel" open={ouvert}>
       <summary>Règles et barème des pronostics</summary>
       <div className="small stack" style={{ marginTop: 10 }}>
         <table className="grid fit">
@@ -244,6 +325,12 @@ function Rules() {
         </p>
         <VintageTable />
         <p>
+          {Number(regles) >= 2 && (
+            <>
+              <strong>Fautes de frappe</strong> : une petite faute est tolérée (« Pomard » compte comme Pommard, « Syrha » comme Syrah), tout comme les synonymes d’appellation (Xérès = Jerez), selon la même règle pour tous.
+              <br />
+            </>
+          )}
           <strong>Classement</strong> : note globale sur 20, au prorata des points possibles (71,5 % des points = 14,3/20), car personne ne joue sur ses propres bouteilles et chacun n’a donc pas le même nombre de points possibles. En cas d’égalité : cépages, puis géographie, puis pays, puis millésime.
         </p>
       </div>
