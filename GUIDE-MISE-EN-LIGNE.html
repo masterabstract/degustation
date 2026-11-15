@@ -341,11 +341,21 @@ ANTHROPIC_API_KEY (facultatif) :</div>
   <h2>Mettre à jour un site déjà en ligne</h2>
   <p>Quand je vous envoie une nouvelle version :</p>
   <ol>
-    <li>Si l’archive contient des fichiers <code>supabase/mise-a-jour-v2.sql</code>, <code>v3</code>, <code>v4</code>… que vous n’avez pas encore lancés, lancez-les dans l’ordre : ouvrez chacun dans le Bloc-notes, copiez tout, collez-le dans Supabase &gt; <span class="btn">SQL Editor</span>, puis <span class="btn">Run</span>.</li>
+    <li>Si l’archive contient des fichiers <code>supabase/mise-a-jour-v2.sql</code>, <code>v3</code>, <code>v4</code>, <code>v5</code>… que vous n’avez pas encore lancés, lancez-les dans l’ordre : ouvrez chacun dans le Bloc-notes, copiez tout, collez-le dans Supabase &gt; <span class="btn">SQL Editor</span>, puis <span class="btn">Run</span>.</li>
     <li>Décompressez la nouvelle archive. Sur GitHub, dans votre dépôt : <span class="btn">Add file</span> &gt; <span class="btn">Upload files</span>.</li>
     <li>Sélectionnez <strong>tout le contenu</strong> du dossier décompressé (<kbd>Ctrl</kbd> + <kbd>A</kbd>) et <strong>faites-le glisser</strong> dans la page (pas le lien « choose your files », qui oublie les dossiers). Les anciens fichiers sont remplacés.</li>
     <li><span class="btn">Commit changes</span>. Vercel reconstruit le site tout seul en 1 à 2 minutes.</li>
   </ol>
+</section>
+
+<section>
+  <h2>Fiches, corrections et championnat</h2>
+  <ul>
+    <li><strong>Contrôle des fiches.</strong> Quand un participant enregistre sa bouteille, le site vérifie la fiche : appellation inconnue (souvent le nom de la cuvée tapé à la place), faute de frappe, appellation d’une autre région, cépage inconnu ou inhabituel, millésime impossible. Il propose la correction (« Vouliez-vous dire « Alto Adige » ? »). Si la fiche est juste malgré tout, le participant coche « ma fiche est juste ». Vous voyez seulement le bilan, dans l’onglet Bouteilles et dans « Préparer la soirée » : « 8 fiches sur 9 vérifiées (à revoir : Karim) », jamais le contenu.</li>
+    <li><strong>Fautes de frappe tolérées dans les pronostics</strong> (soirées créées après cette mise à jour). « Pomard » compte comme Pommard, « Syrha » comme Syrah, « Xérès » ou « Sherry » comme Jerez. La règle est fixe et la même pour tous : 1 lettre d’écart pour un nom de 5 à 8 lettres, 2 lettres à partir de 9, et jamais si la réponse est un autre nom qui existe (« Pomerol » reste Pomerol). Les soirées déjà jouées gardent leurs anciennes règles : leurs résultats ne changent pas.</li>
+    <li><strong>Historique des corrections.</strong> Si vous corrigez une bouteille après la révélation (onglet Bouteilles, <span class="btn">Corriger</span>), la page des résultats affiche à tous un bandeau « Classement mis à jour », avec ce qui a changé et l’effet sur les points et les places.</li>
+    <li><strong>Championnat.</strong> Dans les Archives, l’onglet <span class="btn">Championnat</span> classe les dégustateurs par année (note moyenne sur 20, puis victoires et podiums). Touchez un nom pour ouvrir son carnet : ses points forts, ses trophées, ses soirées, ses vins goûtés avec ses points et ses notes, et les vins qu’il a apportés.</li>
+  </ul>
 </section>
 
 <section>

@@ -33,6 +33,8 @@ create table if not exists public.tastings (
   current_number   int,                             -- vin en cours de service
   served_numbers   int[] not null default '{}',     -- vins déjà servis
   revealed_numbers int[] not null default '{}',     -- vins déjà révélés (révélation vin par vin)
+  regles           smallint not null default 2,     -- version des règles de calcul (lib/bareme.js)
+  corrections      jsonb not null default '[]'::jsonb, -- corrections faites après la révélation
   created_at       timestamptz not null default now()
 );
 
@@ -68,6 +70,7 @@ create table if not exists public.bottles (
   appellation text,
   vintage     int,                                  -- millésime (vide = non millésimé)
   price_range text,
+  fiche_ok    boolean not null default false,       -- fiche confirmée par son auteur malgré les alertes
   notes       text,                                 -- remarque libre de l'organisateur
   created_at  timestamptz not null default now(),
   unique (tasting_id, number)
@@ -185,3 +188,9 @@ grant all on table public.waitlist to service_role;
 notify pgrst, 'reload schema';
 
 -- Fin. Si "Success. No rows returned" s'affiche, tout est en place.
+
+-- Version 5 (bases existantes) : voir aussi supabase/mise-a-jour-v5.sql
+alter table public.tastings add column if not exists regles smallint not null default 1;
+alter table public.tastings alter column regles set default 2;
+alter table public.tastings add column if not exists corrections jsonb not null default '[]'::jsonb;
+alter table public.bottles add column if not exists fiche_ok boolean not null default false;
